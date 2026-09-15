@@ -205,6 +205,15 @@ export class TerrainView {
     this.stats.triangles = triangles;
   }
 
+  /** Rebuilds every loaded chunk, for a change of terrain style. */
+  rebuildAll(): void {
+    const keys = [...this.meshes.keys()];
+    for (const key of keys) this.removeChunk(key);
+    for (const chunk of this.voxels.allChunks()) {
+      if (!chunk.isEmpty) this.updateChunk(chunk.cx, chunk.cy, chunk.cz);
+    }
+  }
+
   /** Remeshes the chunks named by `keys`, plus their neighbours. */
   refresh(keys: Iterable<string>): void {
     const todo = new Set<string>();

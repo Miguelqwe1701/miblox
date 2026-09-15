@@ -1,9 +1,7 @@
 import * as THREE from "three";
 import {
-  BasePart,
   CHUNK_STUDS,
   LocalScript,
-  MATERIAL_ID,
   Vector3,
   type Lighting,
 } from "@miblox/core";
@@ -18,10 +16,9 @@ import { CameraRig } from "./camera-rig.js";
 import { ClientSimulation } from "./client-sim.js";
 import { VRSupport } from "./vr.js";
 import { Hud, type AccountSummary, type GameSummary } from "./hud.js";
+import { HOTBAR } from "./hotbar.js";
+import { loadSettings, saveSettings, type Settings } from "./settings.js";
 import "./style.css";
-
-/** How far, in chunks, terrain is requested around the player. */
-const STREAM_RADIUS = 5;
 
 class MibloxClient {
   private readonly renderer: THREE.WebGLRenderer;
@@ -43,6 +40,9 @@ class MibloxClient {
   private account: AccountSummary | null = null;
   private pendingChunks = new Set<string>();
   private frameTimes: number[] = [];
+  private settings: Settings = loadSettings();
+  private currentGameId: string | null = null;
+  private playerListShown = false;
 
   constructor(private readonly container: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
@@ -53,23 +53,122 @@ class MibloxClient {
     container.appendChild(this.renderer.domElement);
     this.scene.add(this.playerRig);
 
+    this.renderer.shadowMap.enabled = this.settings.shadows;
+
     this.controls = new Controls(this.renderer.domElement);
-    this.hud = new Hud(container, {
-      onPlay: (gameId) => void this.play(gameId),
-      onSignIn: () => {
-        window.location.href = "/auth/login";
+    this.controls.sensitivity = this.settings.sensitivity;
+    this.controls.invertY = this.settings.invertY;
+
+    this.hud = new Hud(
+      container,
+      {
+        onPlay: (gameId) => void this.play(gameId),
+        onSignIn: () => {
+          window.location.href = "/auth/login";
+        },
+        onRename: (username) => this.rename(username),
+        onLeave: () => this.leave(),
+        onSettingChange: (key, value) => this.applySetting(key, value),
+        onSlotSelected: () => {},
+        onJump: () => this.controls.pressJump(),
+        onAction: () => {
+          this.controls.state.primaryPressed = true;
+        },
+        onOpenStudio: (gameId) => {
+          window.location.href = `/studio/${gameId}`;
+        },
       },
-      onRename: (username) => this.rename(username),
-    });
+      this.settings,
+    );
 
     window.addEventListener("resize", () => this.onResize());
-    window.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" && this.connection && !this.hud.chatFocused) {
-        this.hud.focusChat();
-        event.preventDefault();
+    window.addEventListener("keydown", (event) => this.onKeyDown(event));
+    window.addEventListener("keyup", (event) => {
+      if (event.code === "Tab" && this.playerListShown) {
+        this.playerListShown = false;
+        this.hud.setPlayerListVisible(false);
       }
     });
-    this.renderer.domElement.addEventListener("click", () => this.controls.requestPointerLock());
+    this.renderer.domElement.addEventListener("click", () => {
+      if (!this.hud.isPaused && this.connection) this.controls.requestPointerLock();
+    });
+    this.renderer.domElement.addEventListener("wheel", (event) => {
+      // Shift-scroll cycles the hotbar; plain scroll zooms the camera.
+      if (!event.shiftKey) return;
+      event.preventDefault();
+      this.hud.cycleSlot(Math.sign(event.deltaY));
+    });
+  }
+
+  private onKeyDown(event: KeyboardEvent): void {
+    if (this.hud.chatFocused) return;
+
+    if (event.code === "Escape" && this.connection) {
+      const paused = this.hud.togglePaused();
+      if (paused && document.pointerLockElement) document.exitPointerLock();
+      event.preventDefault();
+      return;
+    }
+    if (this.hud.isPaused) return;
+
+    if (event.key === "Enter" && this.connection) {
+      this.hud.focusChat();
+      event.preventDefault();
+      return;
+    }
+    if (event.code === "F3") {
+      const shown = this.hud.toggleStats();
+      this.applySetting("showStats", shown);
+      event.preventDefault();
+      return;
+    }
+    if (event.code === "Tab" && this.connection) {
+      this.playerListShown = true;
+      this.hud.setPlayerListVisible(true);
+      event.preventDefault();
+      return;
+    }
+    // Number keys pick a hotbar slot.
+    const digit = Number(event.key);
+    if (Number.isInteger(digit) && digit >= 1 && digit <= HOTBAR.length) {
+      this.hud.selectSlot(digit - 1);
+    }
+  }
+
+  private applySetting<K extends keyof Settings>(key: K, value: Settings[K]): void {
+    this.settings = { ...this.settings, [key]: value };
+    saveSettings(this.settings);
+
+    switch (key) {
+      case "sensitivity":
+        this.controls.sensitivity = this.settings.sensitivity;
+        break;
+      case "invertY":
+        this.controls.invertY = this.settings.invertY;
+        break;
+      case "fieldOfView":
+        if (this.camera) {
+          this.camera.camera.fov = this.settings.fieldOfView;
+          this.camera.camera.updateProjectionMatrix();
+        }
+        break;
+      case "shadows":
+        this.renderer.shadowMap.enabled = this.settings.shadows;
+        // Materials compiled for the old setting must be rebuilt.
+        this.scene.traverse((object) => {
+          const mesh = object as THREE.Mesh;
+          if (mesh.material) (mesh.material as THREE.Material).needsUpdate = true;
+        });
+        break;
+      case "terrainStyle":
+        if (this.terrainView) {
+          this.terrainView.style = this.settings.terrainStyle;
+          this.terrainView.rebuildAll();
+        }
+        break;
+      default:
+        break;
+    }
   }
 
   async boot(): Promise<void> {
@@ -94,9 +193,9 @@ class MibloxClient {
     try {
       const res = await fetch("/api/games");
       const body = (await res.json()) as { games: GameSummary[] };
-      this.hud.showLobby(body.games);
+      this.hud.showMenu(body.games);
     } catch {
-      this.hud.showLobby([]);
+      this.hud.showMenu([]);
       this.hud.toast("Could not reach the portal");
     }
   }
@@ -122,7 +221,8 @@ class MibloxClient {
   // -- joining -------------------------------------------------------------
 
   private async play(gameId: string): Promise<void> {
-    this.hud.toast("Starting a server…", 8000);
+    this.currentGameId = gameId;
+    this.hud.showLoading("Joining", "Starting a server for you");
     let info: { host: string; port: number; ticket: string; username: string | null };
     try {
       const res = await fetch("/api/join", {
@@ -132,14 +232,17 @@ class MibloxClient {
       });
       if (!res.ok) {
         const body = (await res.json()) as { error?: string };
-        this.hud.toast(body.error ?? "Could not join that game");
+        this.hud.toast(body.error ?? "Could not join that world");
+        void this.loadGames();
         return;
       }
       info = (await res.json()) as typeof info;
     } catch {
       this.hud.toast("Could not reach the portal");
+      void this.loadGames();
       return;
     }
+    this.hud.setLoadingDetail("Connecting");
 
     const platform = detectPlatform();
     const connection = new Connection(
@@ -166,15 +269,16 @@ class MibloxClient {
     );
     this.connection = connection;
     connection.connect();
-    this.hud.bindChat(connection);
-    this.hud.enterGame(platform);
+    this.hud.bindConnection(connection);
   }
 
   private async onJoined(): Promise<void> {
     const connection = this.connection;
     if (!connection) return;
+    this.hud.setLoadingDetail("Building the world");
 
     this.terrainView = new TerrainView(connection.game.Terrain.voxels);
+    this.terrainView.style = this.settings.terrainStyle;
     await this.terrainView.init(wasmUrl);
     this.scene.add(this.terrainView.group);
 
@@ -186,6 +290,8 @@ class MibloxClient {
     this.worldView.isLocallySimulated = (part) => this.simulation?.owns(part) ?? false;
 
     this.camera = new CameraRig(window.innerWidth / window.innerHeight, this.simulation.physics);
+    this.camera.camera.fov = this.settings.fieldOfView;
+    this.camera.camera.updateProjectionMatrix();
 
     this.vr = new VRSupport(this.renderer, this.controls, this.scene);
     const vrAvailable = await this.vr.init();
@@ -193,13 +299,9 @@ class MibloxClient {
       void this.vr?.enter().catch((err) => this.hud.toast(String(err.message ?? err)));
     });
 
-    this.hud.bindTouchButtons(
-      () => this.controls.pressJump(),
-      () => {
-        this.controls.state.primaryPressed = true;
-      },
-    );
-    this.hud.toast(`Joined ${connection.placeName}`, 2500);
+    this.hud.setPlaceName(connection.placeName);
+    this.hud.enterGame(detectPlatform());
+    this.hud.addSystemChat(`Welcome to ${connection.placeName}. Press Esc for the menu.`);
     this.startClientScripts();
   }
 
@@ -231,6 +333,9 @@ class MibloxClient {
   private leave(): void {
     this.connection?.disconnect();
     this.connection = null;
+    this.snapped = false;
+    this.pendingChunks.clear();
+    this.currentGameId = null;
     if (this.terrainView) {
       this.scene.remove(this.terrainView.group);
       this.terrainView.dispose();
@@ -266,6 +371,12 @@ class MibloxClient {
     if (!this.connection || !this.camera || !this.simulation || !this.worldView) {
       return;
     }
+    // While paused the world keeps ticking, but input does not reach the player.
+    if (this.hud.isPaused) {
+      this.worldView.update(dt);
+      this.renderer.render(this.scene, this.camera.camera);
+      return;
+    }
 
     this.vr?.update();
     const input = this.controls.update();
@@ -280,7 +391,8 @@ class MibloxClient {
     this.simulation.step(dt, moveWorld, input.jump);
     this.clientScripts?.step(dt);
 
-    if (input.primaryPressed) this.build(MATERIAL_ID.Rock);
+    // Left click uses the held slot; right click always digs.
+    if (input.primaryPressed) this.build(this.hud.slot.material);
     if (input.secondaryPressed) this.build(0);
 
     this.camera.update(input, this.simulation.root, dt);
@@ -298,6 +410,7 @@ class MibloxClient {
     this.vr?.positionRig(this.playerRig, focus);
 
     this.hud.setCrosshair(this.controls.pointerLocked || this.camera.mode === "FirstPerson");
+    this.updateVitals();
     this.updateStats();
     this.controls.endFrame();
 
@@ -337,6 +450,7 @@ class MibloxClient {
     const root = this.simulation?.root;
     if (!connection || !root) return;
 
+    const radius = this.settings.viewDistance;
     const centre = root.CFrame.position;
     const cx = Math.floor(centre.x / CHUNK_STUDS);
     const cy = Math.floor(centre.y / CHUNK_STUDS);
@@ -344,8 +458,8 @@ class MibloxClient {
     const wanted: string[] = [];
 
     for (let y = cy - 1; y <= cy + 1; y++) {
-      for (let z = cz - STREAM_RADIUS; z <= cz + STREAM_RADIUS; z++) {
-        for (let x = cx - STREAM_RADIUS; x <= cx + STREAM_RADIUS; x++) {
+      for (let z = cz - radius; z <= cz + radius; z++) {
+        for (let x = cx - radius; x <= cx + radius; x++) {
           const key = `${x},${y},${z}`;
           if (connection.game.Terrain.voxels.hasChunk(x, y, z)) continue;
           if (this.pendingChunks.has(key)) continue;
@@ -356,6 +470,16 @@ class MibloxClient {
       }
     }
     if (wanted.length) connection.requestChunks(wanted);
+  }
+
+  private updateVitals(): void {
+    const connection = this.connection;
+    if (!connection) return;
+    const humanoid = this.simulation?.humanoid;
+    if (humanoid) this.hud.setHealth(humanoid.Health, humanoid.MaxHealth);
+
+    const players = connection.game.Players.GetPlayers().map((p) => p.Name);
+    this.hud.setPlayers(players, connection.localPlayer?.Name ?? "");
   }
 
   private trackFps(dt: number): void {
@@ -375,14 +499,13 @@ class MibloxClient {
       : "-";
 
     this.hud.setStats([
-      `${connection.placeName}`,
-      `${fps} fps · ${connection.ping} ms`,
-      `Position ${position}`,
-      `Terrain ${this.terrainView?.stats.chunks ?? 0} chunks · ${
+      `${fps} fps · ${connection.ping} ms ping`,
+      `xyz ${position}`,
+      `terrain ${this.terrainView?.stats.chunks ?? 0} chunks, ${
         this.terrainView?.stats.triangles ?? 0
-      } tris (${this.terrainView?.stats.backend ?? "-"})`,
-      `Parts ${this.worldView?.partCount ?? 0} · Players ${connection.game.Players.GetPlayers().length}`,
-      connection.serverAuthoritative ? "Server authoritative" : "You own your character",
+      } tris (${this.terrainView?.stats.backend ?? "-"}, ${this.settings.terrainStyle})`,
+      `parts ${this.worldView?.partCount ?? 0}`,
+      connection.serverAuthoritative ? "server authoritative" : "client owns character",
     ]);
   }
 

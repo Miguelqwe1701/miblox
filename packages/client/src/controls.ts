@@ -61,6 +61,9 @@ export class Controls {
   platform: Platform;
   /** True while the pointer is captured, which is when mouse look applies. */
   pointerLocked = false;
+  /** Multiplier on look input, from the settings panel. */
+  sensitivity = 1;
+  invertY = false;
   /** Set by the VR session, and blended with the other schemes. */
   vrMove = new THREE.Vector2();
   vrJump = false;
@@ -104,8 +107,9 @@ export class Controls {
   private bindMouse(): void {
     const move = (event: MouseEvent) => {
       if (!this.pointerLocked) return;
-      this.state.lookYaw -= event.movementX * 0.0022;
-      this.state.lookPitch -= event.movementY * 0.0022;
+      const scale = 0.0022 * this.sensitivity;
+      this.state.lookYaw -= event.movementX * scale;
+      this.state.lookPitch -= event.movementY * scale * (this.invertY ? -1 : 1);
     };
     const down = (event: MouseEvent) => {
       if (event.button === 0) this.state.primary = true;
@@ -171,8 +175,9 @@ export class Controls {
         const tracked = this.touches.get(touch.identifier);
         if (!tracked) continue;
         if (tracked.kind === "look") {
-          this.state.lookYaw -= (touch.clientX - tracked.x) * 0.006;
-          this.state.lookPitch -= (touch.clientY - tracked.y) * 0.006;
+          const scale = 0.006 * this.sensitivity;
+          this.state.lookYaw -= (touch.clientX - tracked.x) * scale;
+          this.state.lookPitch -= (touch.clientY - tracked.y) * scale * (this.invertY ? -1 : 1);
         }
         tracked.x = touch.clientX;
         tracked.y = touch.clientY;

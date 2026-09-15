@@ -33,8 +33,9 @@ print("MiBlox starter place is running")
 Terrain:FillBlock(Vector3.new(0, 96, 0), Vector3.new(220, 160, 220), Enum.TerrainMaterial.Air)
 
 -- Then lay a flat plateau underneath it. FillBlock takes a centre and a size,
--- so this fills y = 4..16 and stops right below the spawn pad.
-Terrain:FillBlock(Vector3.new(0, 10, 0), Vector3.new(220, 12, 220), Enum.Material.Grass)
+-- so this fills y = 0..12 and leaves the baseplate sitting proud of the grass
+-- instead of fighting with it for the same surface.
+Terrain:FillBlock(Vector3.new(0, 6, 0), Vector3.new(220, 12, 220), Enum.Material.Grass)
 
 -- A tower of parts, to show physics and replication doing something visible.
 local function buildTower(origin: Vector3, height: number)
@@ -98,11 +99,13 @@ paintEvent.OnServerEvent:Connect(function(player, position, material)
 end)
 
 -- A day/night cycle, showing a loop that yields instead of blocking.
+-- A full day takes forty minutes: fast enough to notice, slow enough that a
+-- short session is not plunged into darkness halfway through.
 task.spawn(function()
 	local Lighting = game:GetService("Lighting")
 	while true do
-		Lighting.ClockTime = (Lighting.ClockTime + 0.05) % 24
-		task.wait(1)
+		Lighting.ClockTime = (Lighting.ClockTime + 0.02) % 24
+		task.wait(2)
 	end
 end)
 `;
@@ -155,12 +158,14 @@ export function buildStarterPlace(): SerializedPlace {
     caves: true,
   };
 
+  // Sized to sit inside the carved plateau. A 512-stud slab would run out
+  // past the flattened ground and read as a grey wall through the hills.
   const baseplate = createInstance("Part", workspace);
   baseplate.Name = "Baseplate";
   Object.assign(baseplate, {
-    Size: new Vector3(512, 16, 512),
-    CFrame: CFrame.fromPosition(new Vector3(0, 8, 0)),
-    Color: Color3.fromRGB(90, 100, 110),
+    Size: new Vector3(160, 4, 160),
+    CFrame: CFrame.fromPosition(new Vector3(0, 14, 0)),
+    Color: Color3.fromRGB(96, 106, 118),
     Material: "Slate",
     Anchored: true,
   });
@@ -181,7 +186,7 @@ export function buildStarterPlace(): SerializedPlace {
     step.Name = `Step${i + 1}`;
     Object.assign(step, {
       Size: new Vector3(12, 2, 6),
-      CFrame: CFrame.fromPosition(new Vector3(-40, 17 + i * 2, -20 - i * 6)),
+      CFrame: CFrame.fromPosition(new Vector3(-40, 17 + i * 2, -24 - i * 6)),
       Color: Color3.fromRGB(150, 120, 90),
       Material: "Wood",
       Anchored: true,
