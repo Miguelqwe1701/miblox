@@ -1,0 +1,640 @@
+{
+  "format": "miblox-place",
+  "version": 1,
+  "name": "Baseplate",
+  "terrain": {
+    "seed": 20250915,
+    "seaLevel": 24,
+    "amplitude": 56,
+    "scale": 180,
+    "caves": true,
+    "chunks": []
+  },
+  "services": [
+    {
+      "id": "i2",
+      "className": "Workspace",
+      "name": "Workspace",
+      "props": {
+        "Gravity": 196.2,
+        "FallenPartsDestroyHeight": -500
+      },
+      "children": [
+        {
+          "id": "ig",
+          "className": "Terrain",
+          "name": "Terrain",
+          "props": {
+            "WaterColor": 2781096,
+            "WaterTransparency": 0.6
+          }
+        },
+        {
+          "id": "ii",
+          "className": "Part",
+          "name": "Baseplate",
+          "props": {
+            "CFrame": [
+              0,
+              8,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "Size": [
+              512,
+              16,
+              512
+            ],
+            "Color": 5923950,
+            "Material": "Slate",
+            "Transparency": 0,
+            "Reflectance": 0,
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Massless": false,
+            "Shape": "Block",
+            "AssemblyLinearVelocity": [
+              0,
+              0,
+              0
+            ],
+            "AssemblyAngularVelocity": [
+              0,
+              0,
+              0
+            ],
+            "NetworkOwnerId": ""
+          }
+        },
+        {
+          "id": "ij",
+          "className": "SpawnLocation",
+          "name": "SpawnLocation",
+          "props": {
+            "CFrame": [
+              0,
+              16.5,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "Size": [
+              24,
+              1,
+              24
+            ],
+            "Color": 4628570,
+            "Material": "Concrete",
+            "Transparency": 0,
+            "Reflectance": 0,
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Massless": false,
+            "Shape": "Block",
+            "AssemblyLinearVelocity": [
+              0,
+              0,
+              0
+            ],
+            "AssemblyAngularVelocity": [
+              0,
+              0,
+              0
+            ],
+            "NetworkOwnerId": "",
+            "Neutral": true,
+            "Duration": 0
+          }
+        },
+        {
+          "id": "ik",
+          "className": "Part",
+          "name": "Step1",
+          "props": {
+            "CFrame": [
+              -40,
+              17,
+              -20,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "Size": [
+              12,
+              2,
+              6
+            ],
+            "Color": 9861210,
+            "Material": "Wood",
+            "Transparency": 0,
+            "Reflectance": 0,
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Massless": false,
+            "Shape": "Block",
+            "AssemblyLinearVelocity": [
+              0,
+              0,
+              0
+            ],
+            "AssemblyAngularVelocity": [
+              0,
+              0,
+              0
+            ],
+            "NetworkOwnerId": ""
+          }
+        },
+        {
+          "id": "il",
+          "className": "Part",
+          "name": "Step2",
+          "props": {
+            "CFrame": [
+              -40,
+              19,
+              -26,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "Size": [
+              12,
+              2,
+              6
+            ],
+            "Color": 9861210,
+            "Material": "Wood",
+            "Transparency": 0,
+            "Reflectance": 0,
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Massless": false,
+            "Shape": "Block",
+            "AssemblyLinearVelocity": [
+              0,
+              0,
+              0
+            ],
+            "AssemblyAngularVelocity": [
+              0,
+              0,
+              0
+            ],
+            "NetworkOwnerId": ""
+          }
+        },
+        {
+          "id": "im",
+          "className": "Part",
+          "name": "Step3",
+          "props": {
+            "CFrame": [
+              -40,
+              21,
+              -32,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "Size": [
+              12,
+              2,
+              6
+            ],
+            "Color": 9861210,
+            "Material": "Wood",
+            "Transparency": 0,
+            "Reflectance": 0,
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Massless": false,
+            "Shape": "Block",
+            "AssemblyLinearVelocity": [
+              0,
+              0,
+              0
+            ],
+            "AssemblyAngularVelocity": [
+              0,
+              0,
+              0
+            ],
+            "NetworkOwnerId": ""
+          }
+        },
+        {
+          "id": "in",
+          "className": "Part",
+          "name": "Step4",
+          "props": {
+            "CFrame": [
+              -40,
+              23,
+              -38,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "Size": [
+              12,
+              2,
+              6
+            ],
+            "Color": 9861210,
+            "Material": "Wood",
+            "Transparency": 0,
+            "Reflectance": 0,
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Massless": false,
+            "Shape": "Block",
+            "AssemblyLinearVelocity": [
+              0,
+              0,
+              0
+            ],
+            "AssemblyAngularVelocity": [
+              0,
+              0,
+              0
+            ],
+            "NetworkOwnerId": ""
+          }
+        },
+        {
+          "id": "io",
+          "className": "Part",
+          "name": "Step5",
+          "props": {
+            "CFrame": [
+              -40,
+              25,
+              -44,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "Size": [
+              12,
+              2,
+              6
+            ],
+            "Color": 9861210,
+            "Material": "Wood",
+            "Transparency": 0,
+            "Reflectance": 0,
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Massless": false,
+            "Shape": "Block",
+            "AssemblyLinearVelocity": [
+              0,
+              0,
+              0
+            ],
+            "AssemblyAngularVelocity": [
+              0,
+              0,
+              0
+            ],
+            "NetworkOwnerId": ""
+          }
+        },
+        {
+          "id": "ip",
+          "className": "Part",
+          "name": "Step6",
+          "props": {
+            "CFrame": [
+              -40,
+              27,
+              -50,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "Size": [
+              12,
+              2,
+              6
+            ],
+            "Color": 9861210,
+            "Material": "Wood",
+            "Transparency": 0,
+            "Reflectance": 0,
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Massless": false,
+            "Shape": "Block",
+            "AssemblyLinearVelocity": [
+              0,
+              0,
+              0
+            ],
+            "AssemblyAngularVelocity": [
+              0,
+              0,
+              0
+            ],
+            "NetworkOwnerId": ""
+          }
+        },
+        {
+          "id": "iq",
+          "className": "Part",
+          "name": "Step7",
+          "props": {
+            "CFrame": [
+              -40,
+              29,
+              -56,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "Size": [
+              12,
+              2,
+              6
+            ],
+            "Color": 9861210,
+            "Material": "Wood",
+            "Transparency": 0,
+            "Reflectance": 0,
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Massless": false,
+            "Shape": "Block",
+            "AssemblyLinearVelocity": [
+              0,
+              0,
+              0
+            ],
+            "AssemblyAngularVelocity": [
+              0,
+              0,
+              0
+            ],
+            "NetworkOwnerId": ""
+          }
+        },
+        {
+          "id": "ir",
+          "className": "Part",
+          "name": "Step8",
+          "props": {
+            "CFrame": [
+              -40,
+              31,
+              -62,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "Size": [
+              12,
+              2,
+              6
+            ],
+            "Color": 9861210,
+            "Material": "Wood",
+            "Transparency": 0,
+            "Reflectance": 0,
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Massless": false,
+            "Shape": "Block",
+            "AssemblyLinearVelocity": [
+              0,
+              0,
+              0
+            ],
+            "AssemblyAngularVelocity": [
+              0,
+              0,
+              0
+            ],
+            "NetworkOwnerId": ""
+          }
+        }
+      ]
+    },
+    {
+      "id": "i3",
+      "className": "Players",
+      "name": "Players",
+      "props": {
+        "MaxPlayers": 32,
+        "RespawnTime": 5,
+        "CharacterAutoLoads": true
+      }
+    },
+    {
+      "id": "i4",
+      "className": "Lighting",
+      "name": "Lighting",
+      "props": {
+        "ClockTime": 14,
+        "Ambient": 5526612,
+        "OutdoorAmbient": 8026746,
+        "Brightness": 2,
+        "FogStart": 400,
+        "FogEnd": 3000,
+        "FogColor": 13161696,
+        "GeographicLatitude": 41.7
+      }
+    },
+    {
+      "id": "i5",
+      "className": "ReplicatedStorage",
+      "name": "ReplicatedStorage",
+      "props": {},
+      "children": [
+        {
+          "id": "iu",
+          "className": "ModuleScript",
+          "name": "Settings",
+          "props": {
+            "Source": "--!strict\n-- A shared module, to show require() and cross-script state.\n\nlocal Settings = {}\n\nSettings.towerHeight = 8\nSettings.giftColor = Color3.fromRGB(255, 190, 60)\n\nfunction Settings.describe(): string\n\treturn `towers are {Settings.towerHeight} blocks tall`\nend\n\nreturn Settings\n",
+            "Enabled": true,
+            "RunContext": "Legacy"
+          }
+        }
+      ]
+    },
+    {
+      "id": "i6",
+      "className": "ReplicatedFirst",
+      "name": "ReplicatedFirst",
+      "props": {}
+    },
+    {
+      "id": "i7",
+      "className": "ServerStorage",
+      "name": "ServerStorage",
+      "props": {}
+    },
+    {
+      "id": "i8",
+      "className": "ServerScriptService",
+      "name": "ServerScriptService",
+      "props": {},
+      "children": [
+        {
+          "id": "is",
+          "className": "Script",
+          "name": "Main",
+          "props": {
+            "Source": "--!strict\n-- Runs on the server. This file is the tour of the API.\n\nlocal Players = game:GetService(\"Players\")\nlocal ReplicatedStorage = game:GetService(\"ReplicatedStorage\")\nlocal Terrain = workspace.Terrain\n\nprint(\"MiBlox starter place is running\")\n\n-- Carve a small plateau so there is somewhere flat to land.\nTerrain:FillBlock(Vector3.new(0, 20, 0), Vector3.new(96, 8, 96), Enum.Material.Grass)\n\n-- A tower of parts, to show physics and replication doing something visible.\nlocal function buildTower(origin: Vector3, height: number)\n\tlocal tower = Instance.new(\"Model\")\n\ttower.Name = \"Tower\"\n\ttower.Parent = workspace\n\n\tfor i = 1, height do\n\t\tlocal block = Instance.new(\"Part\")\n\t\tblock.Name = \"Block\" .. i\n\t\tblock.Size = Vector3.new(6, 3, 6)\n\t\tblock.CFrame = CFrame.new(origin + Vector3.new(0, i * 3, 0))\n\t\tblock.Color = Color3.fromRGB(80 + i * 12, 120, 200 - i * 10)\n\t\tblock.Material = Enum.Material.Concrete\n\t\tblock.Anchored = true\n\t\tblock.Parent = tower\n\tend\n\treturn tower\nend\n\nbuildTower(Vector3.new(40, 30, 0), 8)\n\n-- Greet each player and drop a welcome gift they can knock over.\nPlayers.PlayerAdded:Connect(function(player)\n\tprint(player.Name .. \" joined\")\n\n\tplayer.CharacterAdded:Connect(function(character)\n\t\tlocal humanoid = character:WaitForChild(\"Humanoid\")\n\t\thumanoid.WalkSpeed = 18\n\n\t\tlocal gift = Instance.new(\"Part\")\n\t\tgift.Name = \"Welcome\"\n\t\tgift.Size = Vector3.new(4, 4, 4)\n\t\tgift.Color = Color3.fromRGB(255, 190, 60)\n\t\tgift.Material = Enum.Material.Wood\n\t\tgift.CFrame = character:WaitForChild(\"HumanoidRootPart\").CFrame + Vector3.new(0, 24, 0)\n\t\tgift.Parent = workspace\n\n\t\thumanoid.Died:Connect(function()\n\t\t\tprint(player.Name .. \" died; respawning\")\n\t\t\ttask.wait(Players.RespawnTime)\n\t\t\tplayer:LoadCharacter()\n\t\tend)\n\tend)\nend)\n\n-- A remote the client can call. The server decides what actually happens.\nlocal paintEvent = Instance.new(\"RemoteEvent\")\npaintEvent.Name = \"Paint\"\npaintEvent.Parent = ReplicatedStorage\n\npaintEvent.OnServerEvent:Connect(function(player, position, material)\n\tif typeof(position) ~= \"Vector3\" then return end\n\t-- Never trust a client about distance: check it here.\n\tlocal character = player.Character\n\tlocal root = character and character:FindFirstChild(\"HumanoidRootPart\")\n\tif not root then return end\n\tif (root.CFrame.Position - position).Magnitude > 200 then return end\n\n\tTerrain:FillBall(position, 8, material or Enum.Material.Rock)\nend)\n\n-- A day/night cycle, showing a loop that yields instead of blocking.\ntask.spawn(function()\n\tlocal Lighting = game:GetService(\"Lighting\")\n\twhile true do\n\t\tLighting.ClockTime = (Lighting.ClockTime + 0.05) % 24\n\t\ttask.wait(1)\n\tend\nend)\n",
+            "Enabled": true,
+            "RunContext": "Legacy"
+          }
+        }
+      ]
+    },
+    {
+      "id": "i9",
+      "className": "StarterPlayer",
+      "name": "StarterPlayer",
+      "props": {},
+      "children": [
+        {
+          "id": "ie",
+          "className": "StarterPlayerScripts",
+          "name": "StarterPlayerScripts",
+          "props": {},
+          "children": [
+            {
+              "id": "it",
+              "className": "LocalScript",
+              "name": "ClientMain",
+              "props": {
+                "Source": "--!strict\n-- Runs on each player's machine, under StarterPlayerScripts.\n\nlocal Players = game:GetService(\"Players\")\nlocal ReplicatedStorage = game:GetService(\"ReplicatedStorage\")\n\nlocal player = Players.LocalPlayer\nprint(\"Hello from the client, \" .. player.Name)\n\nlocal paint = ReplicatedStorage:WaitForChild(\"Paint\")\n\n-- The client asks; the server decides. Sending the position rather than the\n-- result is what keeps this honest.\nlocal function paintAt(position: Vector3)\n\tpaint:FireServer(position, Enum.Material.Sand)\nend\n\n-- Exposed for the input layer to call on a place-block action.\n_G.mibloxPaintAt = paintAt\n",
+                "Enabled": true,
+                "RunContext": "Legacy"
+              }
+            }
+          ]
+        },
+        {
+          "id": "if",
+          "className": "StarterCharacterScripts",
+          "name": "StarterCharacterScripts",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "id": "ia",
+      "className": "StarterGui",
+      "name": "StarterGui",
+      "props": {}
+    },
+    {
+      "id": "ib",
+      "className": "StarterPack",
+      "name": "StarterPack",
+      "props": {}
+    },
+    {
+      "id": "ic",
+      "className": "SoundService",
+      "name": "SoundService",
+      "props": {}
+    },
+    {
+      "id": "id",
+      "className": "Teams",
+      "name": "Teams",
+      "props": {}
+    }
+  ],
+  "description": "An empty world with a spawn, a ramp and a tower. Start here.",
+  "maxPlayers": 24,
+  "serverAuthoritative": false,
+  "tickRate": 30
+}

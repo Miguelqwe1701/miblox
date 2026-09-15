@@ -38,6 +38,13 @@ export type ServerMessage =
       rootId: string;
       tickRate: number;
       placeName: string;
+      /** Display name the server settled on, which may differ from the request. */
+      username: string;
+      /**
+       * When true the server simulates everything and ignores client state.
+       * When false it hands each player ownership of their own character.
+       */
+      serverAuthoritative: boolean;
       terrain: { seed: number; seaLevel: number; amplitude: number; scale: number; caves: boolean };
     }
   | { t: "delta"; tick: number; delta: WireDelta }
@@ -50,7 +57,26 @@ export type ServerMessage =
   | { t: "pong"; time: number };
 
 export type ClientMessage =
-  | { t: "join"; name: string; platform: string; protocol: number }
+  | {
+      t: "join";
+      name: string;
+      platform: string;
+      protocol: number;
+      /** MiBlox session token from the portal, or omitted to join as a guest. */
+      session?: string;
+      /** Migood in-frame SDK token, when the game runs on Migood Games. */
+      gameToken?: string;
+    }
+  /**
+   * State for parts this client owns. Only accepted for parts whose
+   * NetworkOwnerId actually matches this connection, and only when the place
+   * is not server-authoritative.
+   */
+  | {
+      t: "state";
+      seq: number;
+      parts: Array<{ id: string; cf: number[]; v: number[] }>;
+    }
   | {
       t: "input";
       seq: number;

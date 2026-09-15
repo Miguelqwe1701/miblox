@@ -96,6 +96,15 @@ export class PhysicsWorld {
   readonly stepTime = 1 / 60;
   gravity = 196.2;
 
+  /**
+   * Decides which bodies this simulation is responsible for.
+   *
+   * The server sets this to "parts I own"; a client sets it to "parts I own",
+   * and the two sets are disjoint, so no body is ever integrated twice. The
+   * default simulates everything, which is what a single-process test wants.
+   */
+  simulationFilter: (part: BasePart) => boolean = () => true;
+
   constructor(
     private readonly workspace: Workspace,
     private readonly voxels: VoxelWorld,
@@ -115,7 +124,10 @@ export class PhysicsWorld {
   step(dt: number): void {
     this.gravity = this.workspace.Gravity;
     const parts = this.collectParts();
-    const dynamic = parts.filter((part) => !part.Anchored && !this.isCharacterPart(part));
+    const dynamic = parts.filter(
+      (part) => !part.Anchored && !this.isCharacterPart(part) && this.simulationFilter(part),
+    );
+    // Everything collides, including bodies another machine is simulating.
     const colliders = parts.filter((part) => part.CanCollide);
 
     for (const part of dynamic) {
@@ -231,6 +243,9 @@ export class PhysicsWorld {
       const humanoid = child.FindFirstChildOfClass("Humanoid") as Humanoid | null;
       const root = child.FindFirstChild("HumanoidRootPart") as BasePart | null;
       if (!humanoid || !root) continue;
+      // A character owned by a client is simulated there; here we only render
+      // whatever state that client replicates back.
+      if (!this.simulationFilter(root)) continue;
       this.stepCharacter(child, humanoid, root, colliders, dt);
     }
   }

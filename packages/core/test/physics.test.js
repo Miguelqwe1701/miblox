@@ -189,3 +189,49 @@ test("CanQuery=false hides a part from raycasts", () => {
   part.CFrame = CFrame.fromPosition(new Vector3(20, 0, 0));
   assert.equal(physics.raycast(new Vector3(0, 0, 0), new Vector3(1, 0, 0), { maxDistance: 100 }), null);
 });
+
+test("simulationFilter skips bodies another machine owns", () => {
+  const { game, physics } = makeWorld();
+  const mine = createInstance("Part", game.Workspace);
+  mine.CFrame = CFrame.fromPosition(new Vector3(0, 100, 0));
+  const theirs = createInstance("Part", game.Workspace);
+  theirs.NetworkOwnerId = "someone-else";
+  theirs.CFrame = CFrame.fromPosition(new Vector3(20, 100, 0));
+
+  physics.simulationFilter = (part) => part.NetworkOwnerId === "";
+  simulate(physics, 0.5);
+
+  assert.ok(mine.CFrame.position.y < 100, "an owned part should fall");
+  assert.equal(theirs.CFrame.position.y, 100, "a part owned elsewhere must not be integrated");
+});
+
+test("an unowned character is left to its owner to simulate", () => {
+  const { game, physics } = makeWorld();
+  const char = buildCharacter({ position: new Vector3(0, 50, 0) });
+  char.Parent = game.Workspace;
+  const root = char.FindFirstChild("HumanoidRootPart");
+  root.NetworkOwnerId = "player-1";
+  physics.simulationFilter = (part) => part.NetworkOwnerId === "";
+
+  simulate(physics, 0.5);
+  assert.equal(root.CFrame.position.y, 50);
+});
+
+test("parts owned elsewhere still collide with what we do simulate", () => {
+  const { game, physics } = makeWorld();
+  const platform = createInstance("Part", game.Workspace);
+  platform.NetworkOwnerId = "someone-else";
+  platform.Size = new Vector3(20, 4, 20);
+  platform.CFrame = CFrame.fromPosition(Vector3.zero);
+
+  const box = createInstance("Part", game.Workspace);
+  box.Size = new Vector3(2, 2, 2);
+  box.CFrame = CFrame.fromPosition(new Vector3(0, 40, 0));
+
+  physics.simulationFilter = (part) => part.NetworkOwnerId === "";
+  simulate(physics, 4);
+  assert.ok(
+    box.CFrame.position.y > 2,
+    `should rest on the other machine's platform, got ${box.CFrame.position.y}`,
+  );
+});

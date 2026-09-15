@@ -75,6 +75,16 @@ export class BasePart extends Instance {
   AssemblyLinearVelocity: Vector3 = Vector3.zero;
   AssemblyAngularVelocity: Vector3 = Vector3.zero;
 
+  /**
+   * Which client simulates this part. Empty means the server does.
+   *
+   * Handing a player ownership of their own character removes a round trip
+   * from every input, which is what makes movement feel responsive over a real
+   * connection. The cost is that the owner is trusted about that part, so a
+   * place that cares sets ServerAuthoritative and keeps ownership server-side.
+   */
+  NetworkOwnerId = "";
+
   readonly Touched = new Signal<[BasePart]>();
   readonly TouchEnded = new Signal<[BasePart]>();
 
@@ -147,6 +157,7 @@ const basePartSchema: PropSchema = {
   Shape: p("string", "Block"),
   AssemblyLinearVelocity: p("Vector3", Vector3.zero),
   AssemblyAngularVelocity: p("Vector3", Vector3.zero),
+  NetworkOwnerId: p("string", ""),
 };
 
 export class Part extends BasePart {
