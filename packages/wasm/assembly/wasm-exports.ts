@@ -20,6 +20,8 @@ import {
   meshChunk,
   vertices,
   voxels,
+  occupancy,
+  meshChunkSmooth,
 } from "./mesher";
 
 /** Address of the padded voxel input buffer (PAD^3 bytes). */
@@ -73,4 +75,13 @@ export function overflowed(): bool {
 
 export function maxQuads(): i32 {
   return getMaxQuads();
+}
+
+/** Address of the padded occupancy buffer (PAD^3 bytes). */
+export function occupancyPtr(): usize {
+  return occupancy.dataStart;
+}
+
+export function meshSmooth(solidPass: i32): i32 {
+  return meshChunkSmooth(solidPass);
 }

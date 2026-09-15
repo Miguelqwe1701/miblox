@@ -23,9 +23,14 @@ export interface ChunkMesh {
   quadCount: number;
 }
 
+/** How terrain is contoured. */
+export type TerrainStyle = "smooth" | "blocky";
+
 export interface Mesher {
   /** Which implementation is in use, for diagnostics and tests. */
   readonly backend: "wasm" | "js";
+  /** WebAssembly pages currently allocated; 0 for the JavaScript backend. */
+  readonly memoryPages: number;
   /**
    * Meshes one chunk.
    *
@@ -37,11 +42,22 @@ export interface Mesher {
    * The returned arrays are copies, so the caller may keep them.
    */
   meshChunk(padded: Uint8Array, solidPass?: number): ChunkMesh;
+
+  /**
+   * Meshes one chunk as a smooth surface.
+   *
+   * Takes the density field alongside the materials: `occupancy[i]` is how full
+   * voxel `i` is, 0 to 255. The surface is contoured through partly filled
+   * voxels, so hills come out rounded instead of stepped.
+   */
+  meshChunkSmooth(padded: Uint8Array, occupancy: Uint8Array, solidPass?: number): ChunkMesh;
 }
 
 interface WasmExports {
   memory: WebAssembly.Memory;
   voxelsPtr(): number;
+  occupancyPtr(): number;
+  meshSmooth(solidPass: number): number;
   verticesPtr(): number;
   indicesPtr(): number;
   mesh(solidPass: number): number;
@@ -57,22 +73,39 @@ interface WasmExports {
 
 class WasmMesher implements Mesher {
   readonly backend = "wasm" as const;
+
+  get memoryPages(): number {
+    return this.exports.memory.buffer.byteLength / 65536;
+  }
+
   private readonly voxels: Uint8Array;
+  private readonly occupancy: Uint8Array;
 
   constructor(private readonly exports: WasmExports) {
     const buffer = exports.memory.buffer;
     this.voxels = new Uint8Array(buffer, exports.voxelsPtr(), PADDED_VOLUME);
+    this.occupancy = new Uint8Array(buffer, exports.occupancyPtr(), PADDED_VOLUME);
     if (exports.paddedSize() !== PAD || exports.floatsPerVertex() !== FLOATS_PER_VERTEX) {
       throw new Error("WASM module layout does not match the JavaScript constants");
     }
   }
 
   meshChunk(padded: Uint8Array, solidPass = 1): ChunkMesh {
-    if (padded.length !== PADDED_VOLUME) {
-      throw new Error(`padded volume must be ${PADDED_VOLUME} bytes, got ${padded.length}`);
-    }
+    checkVolume(padded, "padded volume");
     this.voxels.set(padded);
     const quadCount = this.exports.mesh(solidPass);
+    return this.collect(quadCount);
+  }
+
+  meshChunkSmooth(padded: Uint8Array, occupancy: Uint8Array, solidPass = 1): ChunkMesh {
+    checkVolume(padded, "padded volume");
+    checkVolume(occupancy, "occupancy volume");
+    this.voxels.set(padded);
+    this.occupancy.set(occupancy);
+    return this.collect(this.exports.meshSmooth(solidPass));
+  }
+
+  private collect(quadCount: number): ChunkMesh {
     if (this.exports.overflowed()) {
       throw new Error(
         `chunk mesh exceeded ${this.exports.maxQuads()} quads; the output buffers are too small`,
@@ -94,13 +127,23 @@ class WasmMesher implements Mesher {
 
 class JsMesher implements Mesher {
   readonly backend = "js" as const;
+  readonly memoryPages = 0;
 
   meshChunk(padded: Uint8Array, solidPass = 1): ChunkMesh {
-    if (padded.length !== PADDED_VOLUME) {
-      throw new Error(`padded volume must be ${PADDED_VOLUME} bytes, got ${padded.length}`);
-    }
+    checkVolume(padded, "padded volume");
     js.voxels.set(padded);
-    const quadCount = js.meshChunk(solidPass);
+    return this.collect(js.meshChunk(solidPass));
+  }
+
+  meshChunkSmooth(padded: Uint8Array, occupancy: Uint8Array, solidPass = 1): ChunkMesh {
+    checkVolume(padded, "padded volume");
+    checkVolume(occupancy, "occupancy volume");
+    js.voxels.set(padded);
+    js.occupancy.set(occupancy);
+    return this.collect(js.meshChunkSmooth(solidPass));
+  }
+
+  private collect(quadCount: number): ChunkMesh {
     if (js.getOverflowed()) {
       throw new Error(
         `chunk mesh exceeded ${js.getMaxQuads()} quads; the output buffers are too small`,
@@ -180,4 +223,10 @@ export function packPadded(
 
 export function newPaddedVolume(): Uint8Array {
   return new Uint8Array(PADDED_VOLUME);
+}
+
+function checkVolume(buffer: Uint8Array, what: string): void {
+  if (buffer.length !== PADDED_VOLUME) {
+    throw new Error(`${what} must be ${PADDED_VOLUME} bytes, got ${buffer.length}`);
+  }
 }

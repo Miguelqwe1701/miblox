@@ -4,7 +4,7 @@ import {
   ReplicaTree,
   PROTOCOL_VERSION,
   Chunk,
-  decodeChunkRLE,
+  decodeChunkPlanes,
   parseChunkKey,
   type ClientMessage,
   type ServerMessage,
@@ -160,7 +160,10 @@ export class Connection {
         const keys: string[] = [];
         for (const entry of message.chunks) {
           const [cx, cy, cz] = parseChunkKey(entry.key);
-          this.game.Terrain.voxels.putChunk(new Chunk(cx, cy, cz, decodeChunkRLE(entry.rle)));
+          const planes = decodeChunkPlanes(entry.rle);
+          this.game.Terrain.voxels.putChunk(
+            new Chunk(cx, cy, cz, planes.data, planes.occupancy),
+          );
           keys.push(entry.key);
         }
         this.game.Terrain.voxels.dirtyChunks.clear();

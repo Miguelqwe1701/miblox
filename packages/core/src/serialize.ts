@@ -148,7 +148,8 @@ export function deserializePlace(place: SerializedPlace, game?: DataModel): Data
     terrain.voxels.gen = { ...terrain.voxels.gen, ...gen };
     for (const entry of chunks ?? []) {
       const [cx, cy, cz] = parseChunkKey(entry.key);
-      terrain.voxels.putChunk(new Chunk(cx, cy, cz, decodeChunkRLE(entry.rle)));
+      const planes = decodeChunkPlanes(entry.rle);
+      terrain.voxels.putChunk(new Chunk(cx, cy, cz, planes.data, planes.occupancy));
     }
   }
   return dm;
@@ -163,13 +164,13 @@ export function deserializePlace(place: SerializedPlace, game?: DataModel): Data
  * 4096-byte dump by a wide margin. Encoded as pairs of (material, runLength)
  * varints, then base64 for JSON transport.
  */
-export function encodeChunkRLE(chunk: Chunk): string {
-  const bytes: number[] = [];
+/** Run-length encodes one byte plane into `bytes`. */
+function encodePlane(plane: Uint8Array, bytes: number[]): void {
   let i = 0;
   while (i < CHUNK_VOLUME) {
-    const value = chunk.data[i];
+    const value = plane[i];
     let run = 1;
-    while (i + run < CHUNK_VOLUME && chunk.data[i + run] === value && run < 0x3fff) run++;
+    while (i + run < CHUNK_VOLUME && plane[i + run] === value && run < 0x3fff) run++;
     bytes.push(value);
     // Run length as a 1- or 2-byte varint; high bit flags continuation.
     if (run < 128) {
@@ -179,14 +180,11 @@ export function encodeChunkRLE(chunk: Chunk): string {
     }
     i += run;
   }
-  return bytesToBase64(Uint8Array.from(bytes));
 }
 
-export function decodeChunkRLE(b64: string): Uint8Array {
-  const bytes = base64ToBytes(b64);
-  const out = new Uint8Array(CHUNK_VOLUME);
+function decodePlane(bytes: Uint8Array, start: number, out: Uint8Array): number {
   let o = 0;
-  let i = 0;
+  let i = start;
   while (i < bytes.length && o < CHUNK_VOLUME) {
     const value = bytes[i++];
     let run = bytes[i++];
@@ -195,7 +193,44 @@ export function decodeChunkRLE(b64: string): Uint8Array {
     if (value !== 0) out.fill(value, o, end);
     o = end;
   }
-  return out;
+  return i;
+}
+
+/**
+ * Encodes a chunk as two RLE planes: materials, then occupancy.
+ *
+ * Both are overwhelmingly long runs of one value, so this stays far smaller
+ * than the 8192 raw bytes even though it now carries twice the data.
+ */
+export function encodeChunkRLE(chunk: Chunk): string {
+  const bytes: number[] = [];
+  encodePlane(chunk.data, bytes);
+  encodePlane(chunk.occupancy, bytes);
+  return bytesToBase64(Uint8Array.from(bytes));
+}
+
+export interface DecodedChunk {
+  data: Uint8Array;
+  occupancy: Uint8Array;
+}
+
+export function decodeChunkPlanes(b64: string): DecodedChunk {
+  const bytes = base64ToBytes(b64);
+  const data = new Uint8Array(CHUNK_VOLUME);
+  const occupancy = new Uint8Array(CHUNK_VOLUME);
+  const next = decodePlane(bytes, 0, data);
+  if (next < bytes.length) {
+    decodePlane(bytes, next, occupancy);
+  } else {
+    // An older payload carried materials only; treat those voxels as full.
+    for (let i = 0; i < CHUNK_VOLUME; i++) occupancy[i] = data[i] === 0 ? 0 : 255;
+  }
+  return { data, occupancy };
+}
+
+/** Materials only. Kept for callers that do not need the density field. */
+export function decodeChunkRLE(b64: string): Uint8Array {
+  return decodeChunkPlanes(b64).data;
 }
 
 export function bytesToBase64(bytes: Uint8Array): string {

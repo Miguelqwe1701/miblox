@@ -41,9 +41,18 @@ export function parseChunkKey(key: ChunkKey): [number, number, number] {
   return [Number(x), Number(y), Number(z)];
 }
 
-/** One 16^3 block of voxels. `empty` short-circuits meshing and replication. */
+/**
+ * One 16^3 block of voxels.
+ *
+ * Two parallel arrays: the material id, and how full the voxel is. Occupancy
+ * is what makes the terrain smooth rather than blocky - it is the scalar field
+ * the surface is extracted from, so a half-full voxel produces a surface
+ * halfway through it instead of a cube face on its boundary.
+ */
 export class Chunk {
   readonly data: Uint8Array;
+  /** 0 = empty, 255 = completely solid. */
+  readonly occupancy: Uint8Array;
   /** Bumped on every write so clients can skip unchanged chunks. */
   version = 0;
   solidCount = 0;
@@ -53,9 +62,19 @@ export class Chunk {
     readonly cy: number,
     readonly cz: number,
     data?: Uint8Array,
+    occupancy?: Uint8Array,
   ) {
     this.data = data ?? new Uint8Array(CHUNK_VOLUME);
-    if (data) for (const v of data) if (v !== AIR) this.solidCount++;
+    this.occupancy = occupancy ?? new Uint8Array(CHUNK_VOLUME);
+    if (data) {
+      for (let i = 0; i < CHUNK_VOLUME; i++) {
+        if (this.data[i] === AIR) continue;
+        this.solidCount++;
+        // A chunk restored without occupancy is fully solid where it has a
+        // material, which is what an authored blocky edit means.
+        if (!occupancy) this.occupancy[i] = 255;
+      }
+    }
   }
 
   get key(): ChunkKey {
@@ -74,19 +93,26 @@ export class Chunk {
     return this.data[Chunk.index(lx, ly, lz)];
   }
 
-  set(lx: number, ly: number, lz: number, material: number): boolean {
+  getOccupancy(lx: number, ly: number, lz: number): number {
+    return this.occupancy[Chunk.index(lx, ly, lz)];
+  }
+
+  set(lx: number, ly: number, lz: number, material: number, occupancy = -1): boolean {
     const i = Chunk.index(lx, ly, lz);
+    // A caller that does not say how full the voxel is means "all or nothing".
+    const nextOccupancy = occupancy >= 0 ? occupancy : material === AIR ? 0 : 255;
     const prev = this.data[i];
-    if (prev === material) return false;
+    if (prev === material && this.occupancy[i] === nextOccupancy) return false;
     if (prev === AIR && material !== AIR) this.solidCount++;
     else if (prev !== AIR && material === AIR) this.solidCount--;
     this.data[i] = material;
+    this.occupancy[i] = nextOccupancy;
     this.version++;
     return true;
   }
 
   clone(): Chunk {
-    return new Chunk(this.cx, this.cy, this.cz, this.data.slice());
+    return new Chunk(this.cx, this.cy, this.cz, this.data.slice(), this.occupancy.slice());
   }
 }
 
@@ -108,6 +134,10 @@ function floorDiv(a: number, b: number): number {
 
 function mod(a: number, b: number): number {
   return ((a % b) + b) % b;
+}
+
+function clamp01(v: number): number {
+  return v < 0 ? 0 : v > 1 ? 1 : v;
 }
 
 export interface TerrainGenOptions {
@@ -184,7 +214,17 @@ export class VoxelWorld {
     return chunk.get(mod(vx, CHUNK_SIZE), mod(vy, CHUNK_SIZE), mod(vz, CHUNK_SIZE));
   }
 
-  setVoxel(vx: number, vy: number, vz: number, material: number): boolean {
+  getOccupancy(vx: number, vy: number, vz: number): number {
+    const chunk = this.getChunk(
+      floorDiv(vx, CHUNK_SIZE),
+      floorDiv(vy, CHUNK_SIZE),
+      floorDiv(vz, CHUNK_SIZE),
+    );
+    if (!chunk) return 0;
+    return chunk.getOccupancy(mod(vx, CHUNK_SIZE), mod(vy, CHUNK_SIZE), mod(vz, CHUNK_SIZE));
+  }
+
+  setVoxel(vx: number, vy: number, vz: number, material: number, occupancy = -1): boolean {
     const chunk = this.getChunk(
       floorDiv(vx, CHUNK_SIZE),
       floorDiv(vy, CHUNK_SIZE),
@@ -197,6 +237,7 @@ export class VoxelWorld {
       mod(vy, CHUNK_SIZE),
       mod(vz, CHUNK_SIZE),
       material,
+      occupancy,
     );
     if (changed) {
       this.dirtyChunks.add(chunk.key);
@@ -225,10 +266,58 @@ export class VoxelWorld {
     if (this.chunks.has(chunkKey(cx, cy, cz))) this.dirtyChunks.add(chunkKey(cx, cy, cz));
   }
 
+  /** The occupancy at which a voxel counts as solid ground. */
+  static readonly SOLID_THRESHOLD = 128;
+
   isSolidAt(p: Vector3): boolean {
     const [vx, vy, vz] = worldToVoxel(p);
     const m = this.getVoxel(vx, vy, vz);
-    return m !== AIR && m !== MATERIAL_ID.Water;
+    if (m === AIR || m === MATERIAL_ID.Water) return false;
+    return this.getOccupancy(vx, vy, vz) >= VoxelWorld.SOLID_THRESHOLD;
+  }
+
+  /**
+   * Trilinearly interpolated density at a world position, in 0..1.
+   *
+   * This is the same field the smooth mesher contours, so physics and the
+   * visible surface agree instead of the player standing on an invisible
+   * blocky approximation of a smooth hill.
+   */
+  densityAt(x: number, y: number, z: number, includeWater = false): number {
+    // Samples sit at voxel centres, so shift by half a voxel before flooring.
+    const fx = x / VOXEL_SIZE - 0.5;
+    const fy = y / VOXEL_SIZE - 0.5;
+    const fz = z / VOXEL_SIZE - 0.5;
+    const x0 = Math.floor(fx);
+    const y0 = Math.floor(fy);
+    const z0 = Math.floor(fz);
+    const tx = fx - x0;
+    const ty = fy - y0;
+    const tz = fz - z0;
+
+    const sample = (ix: number, iy: number, iz: number): number => {
+      const m = this.getVoxel(ix, iy, iz);
+      if (m === AIR) return 0;
+      if (!includeWater && m === MATERIAL_ID.Water) return 0;
+      return this.getOccupancy(ix, iy, iz) / 255;
+    };
+
+    const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+    const c00 = lerp(sample(x0, y0, z0), sample(x0 + 1, y0, z0), tx);
+    const c10 = lerp(sample(x0, y0 + 1, z0), sample(x0 + 1, y0 + 1, z0), tx);
+    const c01 = lerp(sample(x0, y0, z0 + 1), sample(x0 + 1, y0, z0 + 1), tx);
+    const c11 = lerp(sample(x0, y0 + 1, z0 + 1), sample(x0 + 1, y0 + 1, z0 + 1), tx);
+    return lerp(lerp(c00, c10, ty), lerp(c01, c11, ty), tz);
+  }
+
+  /** Gradient of the density field, pointing out of the terrain. */
+  densityGradient(x: number, y: number, z: number): Vector3 {
+    const h = VOXEL_SIZE * 0.5;
+    return new Vector3(
+      this.densityAt(x - h, y, z) - this.densityAt(x + h, y, z),
+      this.densityAt(x, y - h, z) - this.densityAt(x, y + h, z),
+      this.densityAt(x, y, z - h) - this.densityAt(x, y, z + h),
+    );
   }
 
   /** Fills an axis-aligned region in studs. Returns voxels changed. */
@@ -242,16 +331,45 @@ export class VoxelWorld {
     return n;
   }
 
+  /**
+   * Fills a sphere, feathering the edge across one voxel so the resulting
+   * surface is smooth rather than a ball of cubes.
+   */
   fillBall(center: Vector3, radius: number, material: number): number {
-    const r = Math.ceil(radius / VOXEL_SIZE);
+    const r = Math.ceil(radius / VOXEL_SIZE) + 1;
     const [cx, cy, cz] = worldToVoxel(center);
-    const r2 = r * r;
     let n = 0;
     for (let y = -r; y <= r; y++)
       for (let z = -r; z <= r; z++)
         for (let x = -r; x <= r; x++) {
-          if (x * x + y * y + z * z > r2) continue;
-          if (this.setVoxel(cx + x, cy + y, cz + z, material)) n++;
+          const vx = cx + x;
+          const vy = cy + y;
+          const vz = cz + z;
+          // Distance from the sphere's surface, in voxels.
+          const centre = voxelToWorld(vx, vy, vz).add(
+            new Vector3(VOXEL_SIZE / 2, VOXEL_SIZE / 2, VOXEL_SIZE / 2),
+          );
+          const distance = centre.sub(center).magnitude;
+          const coverage = clamp01((radius - distance) / VOXEL_SIZE + 0.5);
+          if (coverage <= 0) continue;
+
+          if (material === AIR) {
+            // Carving removes coverage from whatever is already there.
+            const existing = this.getOccupancy(vx, vy, vz);
+            const remaining = Math.round(existing * (1 - coverage));
+            const existingMaterial = this.getVoxel(vx, vy, vz);
+            if (existingMaterial === AIR) continue;
+            if (this.setVoxel(vx, vy, vz, remaining === 0 ? AIR : existingMaterial, remaining)) n++;
+            continue;
+          }
+
+          const occupancy = Math.round(coverage * 255);
+          if (occupancy <= this.getOccupancy(vx, vy, vz) && this.getVoxel(vx, vy, vz) === material) {
+            continue;
+          }
+          if (this.setVoxel(vx, vy, vz, material, Math.max(occupancy, this.getOccupancy(vx, vy, vz)))) {
+            n++;
+          }
         }
     return n;
   }
@@ -295,7 +413,14 @@ export class VoxelWorld {
         for (let ly = 0; ly < CHUNK_SIZE; ly++) {
           const wy = (baseY + ly) * VOXEL_SIZE;
           let material = AIR;
-          if (wy < surface) {
+          let occupancy = 0;
+
+          // How much of this voxel sits below the surface, as a 0..1 fraction.
+          // Carrying the fraction rather than a yes/no is what lets the mesher
+          // place the surface partway through a voxel and come out smooth.
+          const fill = clamp01((surface - wy) / VOXEL_SIZE);
+
+          if (fill > 0) {
             const depth = surface - wy;
             if (depth < VOXEL_SIZE * 1.5) {
               material =
@@ -309,15 +434,28 @@ export class VoxelWorld {
             } else {
               material = MATERIAL_ID.Slate;
             }
+            occupancy = Math.round(fill * 255);
+
             if (g.caves && depth > VOXEL_SIZE * 2) {
               const cave = fbm3(wx / 70, wy / 45, wz / 70, g.seed + 991, 3);
-              if (cave > 0.62) material = AIR;
+              // Fade the cave edge over a band so its walls are smooth too.
+              const carve = clamp01((cave - 0.58) / 0.08);
+              occupancy = Math.round(occupancy * (1 - carve));
+              if (occupancy === 0) material = AIR;
             }
-          } else if (wy < g.seaLevel * 0.55) {
-            material = waterId;
           }
+
+          if (material === AIR && wy < g.seaLevel * 0.55) {
+            material = waterId;
+            // Water fills its voxel up to the waterline.
+            occupancy = Math.round(clamp01((g.seaLevel * 0.55 - wy) / VOXEL_SIZE) * 255);
+            if (occupancy === 0) material = AIR;
+          }
+
           if (material !== AIR) {
-            chunk.data[Chunk.index(lx, ly, lz)] = material;
+            const index = Chunk.index(lx, ly, lz);
+            chunk.data[index] = material;
+            chunk.occupancy[index] = occupancy;
             chunk.solidCount++;
           }
         }
@@ -359,7 +497,11 @@ export class VoxelWorld {
     let normal = Vector3.zero;
     for (let guard = 0; guard < 4096 && t <= maxDistance; guard++) {
       const m = this.getVoxel(vx, vy, vz);
-      if (m !== AIR && !(ignoreWater && m === MATERIAL_ID.Water)) {
+      const solid =
+        m !== AIR &&
+        !(ignoreWater && m === MATERIAL_ID.Water) &&
+        this.getOccupancy(vx, vy, vz) >= VoxelWorld.SOLID_THRESHOLD;
+      if (solid) {
         return {
           position: origin.add(dir.mul(t)),
           normal,

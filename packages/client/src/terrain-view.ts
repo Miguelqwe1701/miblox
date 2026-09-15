@@ -8,6 +8,7 @@ import {
 } from "@miblox/core";
 import {
   CHUNK,
+  PAD,
   FLOATS_PER_VERTEX,
   VERTEX_LAYOUT,
   createMesher,
@@ -34,6 +35,9 @@ export class TerrainView {
   private mesher: Mesher | null = null;
   private readonly palette = buildPalette();
   private readonly padded = newPaddedVolume();
+  private readonly paddedOccupancy = newPaddedVolume();
+  /** Smooth contours the density field; blocky keeps hard voxel faces. */
+  style: "smooth" | "blocky" = "smooth";
   private readonly meshes = new Map<string, { solid: THREE.Mesh; water: THREE.Mesh | null; version: number }>();
   private readonly solidMaterial: THREE.Material;
   private readonly waterMaterial: THREE.Material;
@@ -43,6 +47,7 @@ export class TerrainView {
   constructor(private readonly voxels: VoxelWorld) {
     this.group.name = "Terrain";
     this.solidMaterial = new THREE.MeshLambertMaterial({ vertexColors: true });
+    this.solidMaterial.name = "terrain";
     this.waterMaterial = new THREE.MeshLambertMaterial({
       vertexColors: true,
       transparent: true,
@@ -80,22 +85,30 @@ export class TerrainView {
     const cached = this.meshes.get(key);
     if (cached && cached.version === chunk.version) return;
 
-    // One voxel of neighbour data on each side, so shared faces are hidden.
+    // One voxel of neighbour data on each side, so faces shared with an
+    // adjacent chunk are not emitted twice and the smooth surface joins up.
     const base = { x: cx * CHUNK_SIZE, y: cy * CHUNK_SIZE, z: cz * CHUNK_SIZE };
     for (let y = -1; y <= CHUNK; y++) {
       for (let z = -1; z <= CHUNK; z++) {
         for (let x = -1; x <= CHUNK; x++) {
-          const inside = x >= 0 && x < CHUNK && y >= 0 && y < CHUNK && z >= 0 && z < CHUNK;
-          const value = inside
-            ? chunk.get(x, y, z)
-            : this.voxels.hasChunk(
-                  cx + Math.floor((base.x + x) / CHUNK_SIZE) - cx,
-                  cy + Math.floor((base.y + y) / CHUNK_SIZE) - cy,
-                  cz + Math.floor((base.z + z) / CHUNK_SIZE) - cz,
-                )
-              ? this.voxels.getVoxel(base.x + x, base.y + y, base.z + z)
-              : 0;
-          this.padded[(y + 1) * 18 * 18 + (z + 1) * 18 + (x + 1)] = value;
+          const index = (y + 1) * PAD * PAD + (z + 1) * PAD + (x + 1);
+          if (x >= 0 && x < CHUNK && y >= 0 && y < CHUNK && z >= 0 && z < CHUNK) {
+            this.padded[index] = chunk.get(x, y, z);
+            this.paddedOccupancy[index] = chunk.getOccupancy(x, y, z);
+            continue;
+          }
+          // Outside this chunk: read the neighbour, but only if it has loaded.
+          // Treating an unloaded neighbour as solid would seal the chunk off.
+          const wx = base.x + x;
+          const wy = base.y + y;
+          const wz = base.z + z;
+          const loaded = this.voxels.hasChunk(
+            Math.floor(wx / CHUNK_SIZE),
+            Math.floor(wy / CHUNK_SIZE),
+            Math.floor(wz / CHUNK_SIZE),
+          );
+          this.padded[index] = loaded ? this.voxels.getVoxel(wx, wy, wz) : 0;
+          this.paddedOccupancy[index] = loaded ? this.voxels.getOccupancy(wx, wy, wz) : 0;
         }
       }
     }
@@ -107,8 +120,8 @@ export class TerrainView {
       base.z * VOXEL_SIZE,
     );
 
-    const solid = this.buildMesh(this.padded, 1, this.solidMaterial, origin);
-    const water = this.buildMesh(this.padded, 0, this.waterMaterial, origin);
+    const solid = this.buildMesh(1, this.solidMaterial, origin);
+    const water = this.buildMesh(0, this.waterMaterial, origin);
     if (!solid && !water) return;
 
     if (solid) this.group.add(solid);
@@ -122,12 +135,14 @@ export class TerrainView {
   }
 
   private buildMesh(
-    padded: Uint8Array,
     pass: number,
     material: THREE.Material,
     origin: THREE.Vector3,
   ): THREE.Mesh | null {
-    const result = this.mesher!.meshChunk(padded, pass);
+    const result =
+      this.style === "smooth"
+        ? this.mesher!.meshChunkSmooth(this.padded, this.paddedOccupancy, pass)
+        : this.mesher!.meshChunk(this.padded, pass);
     if (result.vertexCount === 0) return null;
 
     const positions = new Float32Array(result.vertexCount * 3);

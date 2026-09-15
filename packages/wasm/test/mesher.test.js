@@ -270,3 +270,160 @@ test("layout constants agree between the module and the host", () => {
   assert.equal(PADDED_VOLUME, PAD ** 3);
   assert.equal(FLOATS_PER_VERTEX, 10);
 });
+
+// ---------------------------------------------------------------------------
+// Smooth terrain
+// ---------------------------------------------------------------------------
+
+/** A density volume from a signed-distance style function. */
+function densityVolume(fill) {
+  const materials = newPaddedVolume();
+  const occupancy = newPaddedVolume();
+  for (let y = -1; y <= CHUNK; y++) {
+    for (let z = -1; z <= CHUNK; z++) {
+      for (let x = -1; x <= CHUNK; x++) {
+        const i = (y + 1) * PAD * PAD + (z + 1) * PAD + (x + 1);
+        const value = Math.max(0, Math.min(1, fill(x, y, z)));
+        occupancy[i] = Math.round(value * 255);
+        materials[i] = value > 0 ? ROCK : AIR;
+      }
+    }
+  }
+  return { materials, occupancy };
+}
+
+test("an empty density field produces no smooth geometry", () => {
+  const { materials, occupancy } = densityVolume(() => 0);
+  for (const mesher of [wasm, js]) {
+    const mesh = mesher.meshChunkSmooth(materials, occupancy);
+    assert.equal(mesh.vertexCount, 0, mesher.backend);
+    assert.equal(mesh.indexCount, 0, mesher.backend);
+  }
+});
+
+test("a fully solid field produces no smooth geometry", () => {
+  const { materials, occupancy } = densityVolume(() => 1);
+  for (const mesher of [wasm, js]) {
+    assert.equal(mesher.meshChunkSmooth(materials, occupancy).indexCount, 0, mesher.backend);
+  }
+});
+
+test("a flat half-filled layer produces a surface", () => {
+  // Ground up to y = 8, with the boundary voxel half full.
+  const { materials, occupancy } = densityVolume((x, y) => (y < 8 ? 1 : y === 8 ? 0.5 : 0));
+  const mesh = wasm.meshChunkSmooth(materials, occupancy);
+  assert.ok(mesh.vertexCount > 0, "expected a surface");
+  assert.equal(mesh.indexCount % 3, 0);
+  for (let i = 0; i < mesh.indexCount; i++) {
+    assert.ok(mesh.indices[i] < mesh.vertexCount, "index out of range");
+  }
+});
+
+test("smooth normals vary across a slope, unlike blocky ones", () => {
+  // A ramp: density falls off with height and along x, so the surface tilts.
+  const { materials, occupancy } = densityVolume((x, y) => (8 + x * 0.35 - y) / 2);
+  const mesh = wasm.meshChunkSmooth(materials, occupancy);
+  assert.ok(mesh.vertexCount > 0);
+
+  const seen = new Set();
+  let offAxis = 0;
+  for (let i = 0; i < mesh.vertexCount; i++) {
+    const o = i * FLOATS_PER_VERTEX + VERTEX_LAYOUT.normal.offset;
+    const n = [mesh.vertices[o], mesh.vertices[o + 1], mesh.vertices[o + 2]];
+    seen.add(n.map((v) => v.toFixed(2)).join(","));
+    // A blocky mesh only ever emits axis-aligned normals; a slope must not.
+    const axisAligned = Math.abs(Math.abs(n[0]) + Math.abs(n[1]) + Math.abs(n[2]) - 1) < 1e-3
+      && n.filter((v) => Math.abs(v) > 0.001).length === 1;
+    if (!axisAligned) offAxis++;
+  }
+  assert.ok(offAxis > 0, "a sloped surface should produce non-axis-aligned normals");
+  assert.ok(seen.size > 3, `expected varied normals, got ${seen.size}`);
+});
+
+test("smooth normals are unit length", () => {
+  const { materials, occupancy } = densityVolume((x, y, z) => (10 + Math.sin(x / 3) * 2 - y) / 2);
+  const mesh = wasm.meshChunkSmooth(materials, occupancy);
+  assert.ok(mesh.vertexCount > 0);
+  for (let i = 0; i < mesh.vertexCount; i++) {
+    const o = i * FLOATS_PER_VERTEX + VERTEX_LAYOUT.normal.offset;
+    const len = Math.hypot(mesh.vertices[o], mesh.vertices[o + 1], mesh.vertices[o + 2]);
+    assert.ok(Math.abs(len - 1) < 1e-3, `normal length ${len}`);
+  }
+});
+
+test("the smooth surface sits where the density crosses the threshold", () => {
+  // Half-full at y = 8 means the surface belongs inside that voxel, not on its
+  // boundary, which is the whole point of carrying occupancy.
+  const { materials, occupancy } = densityVolume((x, y) => (y < 8 ? 1 : y === 8 ? 0.5 : 0));
+  const mesh = wasm.meshChunkSmooth(materials, occupancy);
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (let i = 0; i < mesh.vertexCount; i++) {
+    const y = mesh.vertices[i * FLOATS_PER_VERTEX + 1];
+    minY = Math.min(minY, y);
+    maxY = Math.max(maxY, y);
+  }
+  assert.ok(minY > 8 && maxY < 9.5, `surface should sit near y=8.5, got ${minY}..${maxY}`);
+});
+
+test("smooth output is bounded by one vertex per cell", () => {
+  // Surface Nets emits at most one vertex per cell, which is what keeps a
+  // smooth chunk cheap. (It is not always fewer triangles than the blocky
+  // mesher: that one merges coplanar faces, so it wins on flat ground and
+  // loses on slopes, where it would need a step per voxel.)
+  const { materials, occupancy } = densityVolume(
+    (x, y, z) => (9 + Math.sin(x / 4) * 3 + Math.cos(z / 4) * 3 - y) / 2,
+  );
+  const smooth = wasm.meshChunkSmooth(materials, occupancy);
+  assert.ok(smooth.vertexCount > 0);
+  const cells = (CHUNK + 1) ** 3;
+  assert.ok(smooth.vertexCount <= cells, `${smooth.vertexCount} vertices for ${cells} cells`);
+});
+
+test("the wasm and javascript backends agree on smooth geometry too", () => {
+  const shapes = [
+    (x, y) => (8 - y) / 2,
+    (x, y, z) => (10 + Math.sin(x / 3) * 2 + Math.cos(z / 3) * 2 - y) / 2,
+    (x, y, z) => 1 - Math.hypot(x - 8, y - 8, z - 8) / 6,
+    (x, y, z) => ((x + y + z) % 5) / 4,
+  ];
+  for (const [i, fill] of shapes.entries()) {
+    const { materials, occupancy } = densityVolume(fill);
+    const a = wasm.meshChunkSmooth(materials, occupancy);
+    const b = js.meshChunkSmooth(materials, occupancy);
+    assert.equal(a.vertexCount, b.vertexCount, `shape ${i}: vertex count`);
+    assert.deepEqual(Array.from(a.vertices), Array.from(b.vertices), `shape ${i}: vertices`);
+    assert.deepEqual(Array.from(a.indices), Array.from(b.indices), `shape ${i}: indices`);
+  }
+});
+
+test("meshing smoothly many times does not grow memory without bound", () => {
+  // The wasm build uses the stub runtime, which never frees, so anything
+  // allocated per call would accumulate. Meshing repeatedly must not grow it.
+  const { materials, occupancy } = densityVolume((x, y, z) => (9 + Math.sin(x / 4) * 3 - y) / 2);
+  const before = wasm.memoryPages;
+  for (let i = 0; i < 200; i++) wasm.meshChunkSmooth(materials, occupancy);
+  assert.equal(wasm.memoryPages, before, "linear memory grew across repeated meshing");
+});
+
+test("a sphere of density produces a closed, watertight surface", () => {
+  const { materials, occupancy } = densityVolume(
+    (x, y, z) => 1 - Math.hypot(x - 7.5, y - 7.5, z - 7.5) / 5,
+  );
+  const mesh = wasm.meshChunkSmooth(materials, occupancy);
+  assert.ok(mesh.vertexCount > 20, "expected a sphere's worth of vertices");
+
+  // Every edge in a closed mesh is shared by exactly two triangles.
+  const edges = new Map();
+  for (let i = 0; i < mesh.indexCount; i += 3) {
+    const tri = [mesh.indices[i], mesh.indices[i + 1], mesh.indices[i + 2]];
+    for (let e = 0; e < 3; e++) {
+      const a = tri[e];
+      const b = tri[(e + 1) % 3];
+      const key = a < b ? `${a}_${b}` : `${b}_${a}`;
+      edges.set(key, (edges.get(key) ?? 0) + 1);
+    }
+  }
+  const unshared = [...edges.values()].filter((count) => count !== 2).length;
+  assert.equal(unshared, 0, `${unshared} edges are not shared by exactly two triangles`);
+});

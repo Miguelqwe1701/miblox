@@ -219,7 +219,15 @@ export class PhysicsWorld {
     return push;
   }
 
-  /** Solid voxel cells whose AABBs intersect `box`. Water is not solid. */
+  /**
+   * Solid voxel cells whose AABBs intersect `box`.
+   *
+   * With smooth terrain a voxel is only an obstacle once it is more than half
+   * full; a voxel the mesher drew as a thin sliver of ground is not something
+   * a player should collide with as a full 4-stud cube. The box is shrunk to
+   * the part of the voxel that is actually filled, so a half-full voxel stops
+   * a body halfway up rather than at its ceiling.
+   */
   private voxelBoxesOverlapping(box: AABB): AABB[] {
     const out: AABB[] = [];
     const [x0, y0, z0] = worldToVoxel(box.min);
@@ -231,8 +239,16 @@ export class PhysicsWorld {
         for (let x = x0; x <= x1; x++) {
           const m = this.voxels.getVoxel(x, y, z);
           if (m === AIR || m === MATERIAL_ID.Water) continue;
+          const occupancy = this.voxels.getOccupancy(x, y, z) / 255;
+          if (occupancy < 0.5) continue;
           const min = new Vector3(x * VOXEL_SIZE, y * VOXEL_SIZE, z * VOXEL_SIZE);
-          out.push({ min, max: min.add(new Vector3(VOXEL_SIZE, VOXEL_SIZE, VOXEL_SIZE)) });
+          // Fuller voxels reach higher; the horizontal extent stays whole so a
+          // wall does not develop gaps a player can squeeze through.
+          const height = VOXEL_SIZE * occupancy;
+          out.push({
+            min,
+            max: new Vector3(min.x + VOXEL_SIZE, min.y + height, min.z + VOXEL_SIZE),
+          });
         }
     return out;
   }
