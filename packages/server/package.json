@@ -5,8 +5,15 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
-  "bin": { "miblox-server": "./dist/main.js" },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "miblox-server": "./dist/main.js"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "node --watch dist/main.js",
@@ -17,7 +24,8 @@
     "@miblox/auth": "*",
     "@miblox/core": "*",
     "@miblox/luau": "*",
-    "ws": "^8.18.0"
+    "ws": "^8.18.0",
+    "@miblox/scripting": "*"
   },
   "devDependencies": {
     "@types/ws": "^8.5.12"

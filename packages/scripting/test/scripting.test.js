@@ -6,7 +6,7 @@ import {
   Vector3,
   createInstance,
 } from "@miblox/core";
-import { ScriptEnvironment } from "../dist/api/environment.js";
+import { ScriptEnvironment } from "../dist/index.js";
 
 /** A server-side script environment over a fresh, empty world. */
 function makeEnv(overrides = {}) {

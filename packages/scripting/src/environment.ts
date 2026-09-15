@@ -173,8 +173,10 @@ function buildEnumTable(): LuaTable {
   addEnum("CameraMode", ["Classic", "LockFirstPerson"]);
   addEnum("RaycastFilterType", ["Exclude", "Include"]);
   addEnum("NormalId", ["Top", "Bottom", "Left", "Right", "Front", "Back"]);
-  // Terrain materials are a subset, indexed by voxel id.
-  addEnum("TerrainMaterial", MATERIAL_BY_ID.filter((m) => m !== "Air"));
+  // Terrain materials, indexed by voxel id. Air is included on purpose: it is
+  // how a script clears a region, which is the only way to carve out a space
+  // in procedurally generated ground.
+  addEnum("TerrainMaterial", MATERIAL_BY_ID);
 
   root.frozen = true;
   return root;

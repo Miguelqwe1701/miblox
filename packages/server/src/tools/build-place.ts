@@ -27,8 +27,14 @@ local Terrain = workspace.Terrain
 
 print("MiBlox starter place is running")
 
--- Carve a small plateau so there is somewhere flat to land.
-Terrain:FillBlock(Vector3.new(0, 20, 0), Vector3.new(96, 8, 96), Enum.Material.Grass)
+-- Clear the natural hillside out of the spawn area first. The world is
+-- generated from a seed, so the ground here can easily be higher than the
+-- baseplate; without this the spawn pad ends up buried inside a hill.
+Terrain:FillBlock(Vector3.new(0, 96, 0), Vector3.new(220, 160, 220), Enum.TerrainMaterial.Air)
+
+-- Then lay a flat plateau underneath it. FillBlock takes a centre and a size,
+-- so this fills y = 4..16 and stops right below the spawn pad.
+Terrain:FillBlock(Vector3.new(0, 10, 0), Vector3.new(220, 12, 220), Enum.Material.Grass)
 
 -- A tower of parts, to show physics and replication doing something visible.
 local function buildTower(origin: Vector3, height: number)

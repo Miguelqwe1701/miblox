@@ -25,7 +25,7 @@ import {
   type ServerMessage,
   type WireDelta,
 } from "@miblox/core";
-import { ScriptEnvironment } from "../api/environment.js";
+import { ScriptEnvironment } from "@miblox/scripting";
 
 export interface PlaceServerOptions {
   place: SerializedPlace;
