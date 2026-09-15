@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": ".",
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts", "assembly/mesher.ts", "assembly/as-shim.d.ts"],
+  "exclude": ["assembly/wasm-exports.ts"]
+}
