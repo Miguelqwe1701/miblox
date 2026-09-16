@@ -45,6 +45,20 @@ export function isRegisteredClass(className: string): boolean {
   return classRegistry.has(className);
 }
 
+/**
+ * Classes a DataModel creates for itself.
+ *
+ * Loading or replicating a tree must reuse these rather than adding a second
+ * copy beside the real one: a duplicate StarterPlayerScripts means
+ * FindFirstChild returns the empty one and the place's LocalScripts never run.
+ */
+export const AUTO_CREATED_CLASSES = new Set([
+  "Terrain",
+  "Camera",
+  "StarterPlayerScripts",
+  "StarterCharacterScripts",
+]);
+
 let nextId = 1;
 /** Deterministic per-process ids keep tests and replication logs readable. */
 export function newInstanceId(): string {

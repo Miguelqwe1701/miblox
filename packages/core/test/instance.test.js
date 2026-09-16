@@ -7,6 +7,8 @@ import {
   serializePlace,
   deserializePlace,
   buildCharacter,
+  ReplicaTree,
+  buildDelta,
 } from "../dist/index.js";
 
 test("children track parenting both ways", () => {
@@ -125,4 +127,78 @@ test("the placeholder character rig has what physics needs", () => {
   for (const name of ["Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"]) {
     assert.ok(model.FindFirstChild(name), `missing ${name}`);
   }
+});
+
+test("serializing does not duplicate Terrain on reload", () => {
+  const game = new DataModel();
+  game.Terrain.SetVoxel(0, 0, 0, 2);
+
+  // Round-trip twice: a duplicate would compound with each save.
+  let place = serializePlace(game, "Round");
+  let restored = deserializePlace(JSON.parse(JSON.stringify(place)));
+  place = serializePlace(restored, "Round");
+  restored = deserializePlace(JSON.parse(JSON.stringify(place)));
+
+  const terrains = restored.Workspace.GetChildren().filter((c) => c.className === "Terrain");
+  assert.equal(terrains.length, 1, "exactly one Terrain should exist");
+  assert.equal(restored.Workspace.Terrain, terrains[0], "and it must be the live one");
+  assert.equal(restored.Terrain.GetVoxel(0, 0, 0), 2, "its voxels should survive");
+  // The Camera is not written to the file, but a fresh DataModel makes its
+  // own, so the property that matters is that there is exactly one.
+  assert.equal(
+    restored.Workspace.GetChildren().filter((c) => c.className === "Camera").length,
+    1,
+    "the Camera should not be duplicated either",
+  );
+  const savedWorkspaceChildren =
+    place.services.find((s) => s.name === "Workspace")?.children ?? [];
+  assert.equal(
+    savedWorkspaceChildren.some((c) => c.className === "Camera" || c.className === "Terrain"),
+    false,
+    "neither should be written into the place file",
+  );
+});
+
+test("auto-created containers are reused, not duplicated, on load", () => {
+  const game = new DataModel();
+  const starterPlayer = game.GetService("StarterPlayer");
+  const container = starterPlayer.FindFirstChild("StarterPlayerScripts");
+  const script = createInstance("LocalScript", container);
+  script.Name = "ClientMain";
+  script.Source = "print('client')";
+
+  const restored = deserializePlace(JSON.parse(JSON.stringify(serializePlace(game, "Round"))));
+  const restoredStarter = restored.GetService("StarterPlayer");
+  const containers = restoredStarter
+    .GetChildren()
+    .filter((c) => c.className === "StarterPlayerScripts");
+
+  assert.equal(containers.length, 1, "a second StarterPlayerScripts would shadow the real one");
+  // The lookup the client actually performs must find the scripts.
+  const found = restoredStarter.FindFirstChild("StarterPlayerScripts");
+  assert.equal(found.FindFirstChild("ClientMain")?.Source, "print('client')");
+});
+
+test("replication also adopts auto-created containers", () => {
+  const server = new DataModel();
+  const container = server.GetService("StarterPlayer").FindFirstChild("StarterPlayerScripts");
+  const script = createInstance("LocalScript", container);
+  script.Name = "ClientMain";
+  script.Source = "print('client')";
+
+  const client = new DataModel();
+  client.recordChanges = false;
+  const replica = new ReplicaTree(client);
+  replica.bindRoot(server.id);
+  replica.apply(buildDelta(server, server.flushChanges()));
+
+  const starter = client.GetService("StarterPlayer");
+  assert.equal(
+    starter.GetChildren().filter((c) => c.className === "StarterPlayerScripts").length,
+    1,
+  );
+  assert.equal(
+    starter.FindFirstChild("StarterPlayerScripts").FindFirstChild("ClientMain")?.Source,
+    "print('client')",
+  );
 });

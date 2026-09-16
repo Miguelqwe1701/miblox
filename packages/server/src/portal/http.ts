@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { createReadStream } from "node:fs";
-import { stat } from "node:fs/promises";
+import { readFile, rename, stat, writeFile } from "node:fs/promises";
 import { extname, join, normalize, resolve, sep } from "node:path";
 import {
   AuthError,
@@ -9,6 +9,7 @@ import {
   newState,
   type Account,
 } from "@miblox/auth";
+import type { SerializedPlace } from "@miblox/core";
 import { ServerManager, type GameDefinition } from "./manager.js";
 import { newTicket } from "../place/ticket.js";
 
@@ -111,6 +112,13 @@ export class PortalServer {
       return this.join(req, res);
     }
 
+    // -- studio ------------------------------------------------------------
+    if (path.startsWith("/api/places/")) {
+      const id = decodeURIComponent(path.slice("/api/places/".length));
+      if (method === "GET") return this.readPlace(id, res);
+      if (method === "PUT") return this.writePlace(id, req, res);
+    }
+
     // -- auth --------------------------------------------------------------
     if (path === "/auth/login" && method === "GET") {
       return this.beginLogin(res, url);
@@ -137,10 +145,14 @@ export class PortalServer {
 
     // -- static ------------------------------------------------------------
     if (method === "GET" || method === "HEAD") {
-      // /play/<id> is a client-side route; serve the app and let it read the id.
-      const filePath = path.startsWith("/play/") ? "/index.html" : path;
+      // These are client-side routes; serve the app and let it read the id.
+      const filePath = path.startsWith("/play/")
+        ? "/index.html"
+        : path.startsWith("/studio/")
+          ? "/studio.html"
+          : path;
       if (await this.serveStatic(filePath, res)) return;
-      if (path === "/" || path.startsWith("/play/")) {
+      if (path === "/" || path.startsWith("/play/") || path.startsWith("/studio/")) {
         return sendHtml(res, 200, fallbackPage(this.opts.manager.listGames()));
       }
     }
@@ -334,6 +346,79 @@ export class PortalServer {
       guest: !account,
       username: account?.username ?? null,
     });
+  }
+
+  // -- studio: reading and writing places ----------------------------------
+
+  private async readPlace(id: string, res: ServerResponse): Promise<void> {
+    const game = this.opts.manager.getGame(id);
+    if (!game) return sendJson(res, 404, { error: "No such world" });
+    try {
+      const raw = await readFile(game.placeFile, "utf8");
+      res.writeHead(200, {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "no-store",
+      });
+      res.end(raw);
+    } catch (err) {
+      this.log(`could not read ${game.placeFile}: ${String(err)}`);
+      sendJson(res, 500, { error: "Could not read that world" });
+    }
+  }
+
+  /**
+   * Saves an edited place.
+   *
+   * Written through a temp file and renamed, so a failed write cannot leave a
+   * half-written world behind. Any running server for the place is stopped:
+   * it holds the old world in memory, and players rejoining should get the new
+   * one rather than a copy that no longer matches what is on disk.
+   */
+  private async writePlace(id: string, req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const game = this.opts.manager.getGame(id);
+    if (!game) return sendJson(res, 404, { error: "No such world" });
+
+    // Editing is gated on being signed in, when sign-in is configured at all.
+    if (this.opts.auth) {
+      const account = await this.currentAccount(req);
+      if (!account) return sendJson(res, 401, { error: "Sign in to save changes" });
+    }
+
+    const raw = await readBody(req);
+    let place: SerializedPlace;
+    try {
+      place = JSON.parse(raw) as SerializedPlace;
+    } catch {
+      return sendJson(res, 400, { error: "That is not valid JSON" });
+    }
+    if (place?.format !== "miblox-place") {
+      return sendJson(res, 400, { error: "That is not a MiBlox place file" });
+    }
+
+    try {
+      const tmp = `${game.placeFile}.${process.pid}.tmp`;
+      await writeFile(tmp, JSON.stringify(place, null, 2), "utf8");
+      await rename(tmp, game.placeFile);
+    } catch (err) {
+      this.log(`could not write ${game.placeFile}: ${String(err)}`);
+      return sendJson(res, 500, { error: "Could not save that world" });
+    }
+
+    // Reload the catalogue entry, since the name or limits may have changed.
+    this.opts.manager.registerGame({
+      ...game,
+      name: place.name ?? game.name,
+      description: (place as { description?: string }).description ?? game.description,
+      maxPlayers: (place as { maxPlayers?: number }).maxPlayers ?? game.maxPlayers,
+      serverAuthoritative:
+        (place as { serverAuthoritative?: boolean }).serverAuthoritative ??
+        game.serverAuthoritative,
+    });
+
+    const running = this.opts.manager.listServers().filter((s) => s.gameId === id);
+    await Promise.all(running.map((s) => this.opts.manager.stop(s.id)));
+    this.log(`saved ${id}${running.length ? ` and restarted ${running.length} server(s)` : ""}`);
+    sendJson(res, 200, { ok: true, restarted: running.length });
   }
 
   // -- static files --------------------------------------------------------

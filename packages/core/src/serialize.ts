@@ -1,4 +1,5 @@
 import {
+  AUTO_CREATED_CLASSES,
   Instance,
   createInstance,
   decodeValue,
@@ -58,9 +59,13 @@ export function serializeInstance(inst: Instance): SerializedInstance {
     name: inst.Name,
     props,
   };
+  // Terrain and Camera are singletons every DataModel creates for itself.
+  // Terrain's contents travel as voxel chunks, not as an instance, and writing
+  // either into the file would create a duplicate on load that then compounds
+  // with every save.
   const children = inst
     .GetChildren()
-    .filter((c) => c.Archivable && c.className !== "Camera");
+    .filter((c) => c.Archivable && c.className !== "Camera" && c.className !== "Terrain");
   if (children.length) out.children = children.map(serializeInstance);
   return out;
 }
@@ -92,8 +97,14 @@ function deserializeInto(
   pendingRefs: Array<{ inst: Instance; prop: string; targetId: string }>,
 ): Instance {
   const schema = getClassSchema(node.className) ?? {};
-  // Services already exist on a fresh DataModel; reuse rather than duplicate.
-  let inst = parent.className === "DataModel" ? parent.FindFirstChild(node.name) : null;
+  // Services and the containers a DataModel builds for itself already exist.
+  // Reuse them instead of adding a second copy alongside the real one.
+  let inst =
+    parent.className === "DataModel"
+      ? parent.FindFirstChild(node.name)
+      : AUTO_CREATED_CLASSES.has(node.className)
+        ? parent.FindFirstChildOfClass(node.className)
+        : null;
   if (!inst || inst.className !== node.className) {
     inst = createInstance(node.className);
     inst.Name = node.name;

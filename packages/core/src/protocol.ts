@@ -1,4 +1,5 @@
 import {
+  AUTO_CREATED_CLASSES,
   Instance,
   createInstance,
   decodeValue,
@@ -251,9 +252,14 @@ export class ReplicaTree {
       this.orphans.set(rec.p, queue);
       return;
     }
-    // Services already exist on the client's DataModel; adopt rather than add.
+    // Services, and the containers a DataModel builds for itself, already
+    // exist on the client. Adopt them rather than adding a duplicate that
+    // FindFirstChild would then shadow the real one with.
     let inst: Instance | null = null;
     if (parent && parent === this.root) inst = parent.FindFirstChild(rec.n);
+    else if (parent && AUTO_CREATED_CLASSES.has(rec.cn)) {
+      inst = parent.FindFirstChildOfClass(rec.cn);
+    }
     if (!inst || inst.className !== rec.cn) {
       inst = createInstance(rec.cn);
       inst.Name = rec.n;

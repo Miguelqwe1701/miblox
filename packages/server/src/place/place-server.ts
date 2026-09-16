@@ -8,12 +8,12 @@ import {
   Player,
   RemoteEvent,
   Vector3,
-  buildCharacter,
   buildDelta,
   createInstance,
   deserializePlace,
   encodeChunkRLE,
   isEmptyDelta,
+  loadCharacterFor,
   MATERIAL_ID,
   PROTOCOL_VERSION,
   Terrain,
@@ -333,7 +333,13 @@ export class PlaceServer {
   private spawnCharacter(player: Player): Model {
     player.Character?.Destroy();
     const spawn = this.findSpawnPoint();
-    const character = buildCharacter({ name: player.Name, position: spawn });
+    // A place can ship its own rig as StarterPlayer.StarterCharacter; the
+    // placeholder is only used when it has not.
+    const { model: character, custom } = loadCharacterFor(this.game.FindService("StarterPlayer"), {
+      name: player.Name,
+      position: spawn,
+    });
+    if (custom) this.log(`${player.Name} spawned with the place's StarterCharacter`);
     character.setParent(this.game.Workspace);
 
     const root = character.FindFirstChild("HumanoidRootPart") as BasePart;

@@ -7,6 +7,8 @@ import {
   CFrame,
   createInstance,
   buildCharacter,
+  loadCharacterFor,
+  Color3,
   rayAABB,
   MATERIAL_ID,
 } from "../dist/index.js";
@@ -234,4 +236,126 @@ test("parts owned elsewhere still collide with what we do simulate", () => {
     box.CFrame.position.y > 2,
     `should rest on the other machine's platform, got ${box.CFrame.position.y}`,
   );
+});
+
+// ---------------------------------------------------------------------------
+// Characters: the placeholder rig, custom rigs, and NPCs
+// ---------------------------------------------------------------------------
+
+test("loadCharacterFor falls back to the placeholder rig", () => {
+  const game = new DataModel();
+  const { model, custom } = loadCharacterFor(game.GetService("StarterPlayer"), {
+    position: new Vector3(0, 20, 0),
+  });
+  assert.equal(custom, false);
+  assert.ok(model.FindFirstChildOfClass("Humanoid"));
+  assert.ok(model.FindFirstChild("HumanoidRootPart"));
+});
+
+test("a StarterCharacter model is used instead of the placeholder", () => {
+  const game = new DataModel();
+  const starterPlayer = game.GetService("StarterPlayer");
+
+  // A minimal custom rig: the engine only requires these two things.
+  const template = createInstance("Model", starterPlayer);
+  template.Name = "StarterCharacter";
+  const root = createInstance("Part", template);
+  root.Name = "HumanoidRootPart";
+  root.Size = new Vector3(3, 6, 3);
+  const body = createInstance("Part", template);
+  body.Name = "CustomBody";
+  body.Color = Color3.fromRGB(255, 0, 128);
+  createInstance("Humanoid", template);
+
+  const { model, custom } = loadCharacterFor(starterPlayer, {
+    name: "Tester",
+    position: new Vector3(40, 30, -10),
+  });
+
+  assert.equal(custom, true, "the place's rig should have been used");
+  assert.equal(model.Name, "Tester");
+  assert.ok(model.FindFirstChild("CustomBody"), "the custom parts should come along");
+  assert.notEqual(model, template, "the template itself must not be reparented");
+  assert.ok(starterPlayer.FindFirstChild("StarterCharacter"), "the template stays put");
+
+  const spawnedRoot = model.FindFirstChild("HumanoidRootPart");
+  assert.ok(Math.abs(spawnedRoot.CFrame.position.x - 40) < 8, "it should move to the spawn");
+});
+
+test("a StarterCharacter without a Humanoid is rejected", () => {
+  const game = new DataModel();
+  const starterPlayer = game.GetService("StarterPlayer");
+  const broken = createInstance("Model", starterPlayer);
+  broken.Name = "StarterCharacter";
+  createInstance("Part", broken).Name = "HumanoidRootPart";
+
+  // No Humanoid means the engine cannot drive it, so fall back rather than
+  // spawn something that will never move.
+  const { custom, model } = loadCharacterFor(starterPlayer);
+  assert.equal(custom, false);
+  assert.ok(model.FindFirstChildOfClass("Humanoid"));
+});
+
+test("StarterCharacterScripts are copied into the character", () => {
+  const game = new DataModel();
+  const starterPlayer = game.GetService("StarterPlayer");
+  const container = starterPlayer.FindFirstChild("StarterCharacterScripts");
+  const script = createInstance("LocalScript", container);
+  script.Name = "Controller";
+  script.Source = "print('hi')";
+
+  const { model } = loadCharacterFor(starterPlayer);
+  const copied = model.FindFirstChild("Controller");
+  assert.ok(copied, "the script should be copied into the character");
+  assert.notEqual(copied, script, "and it should be a copy, not the original");
+  assert.equal(copied.Source, "print('hi')");
+});
+
+test("any model with a Humanoid is simulated, so NPCs just work", () => {
+  const { game, physics } = makeWorld();
+  const floor = createInstance("Part", game.Workspace);
+  floor.Anchored = true;
+  floor.Size = new Vector3(200, 4, 200);
+  floor.CFrame = CFrame.fromPosition(Vector3.zero);
+
+  // Built by hand, the way a script would build an NPC.
+  const npc = createInstance("Model", game.Workspace);
+  npc.Name = "Shopkeeper";
+  const root = createInstance("Part", npc);
+  root.Name = "HumanoidRootPart";
+  root.Size = new Vector3(2, 2, 1);
+  root.CFrame = CFrame.fromPosition(new Vector3(0, 30, 0));
+  npc.PrimaryPart = root;
+  const humanoid = createInstance("Humanoid", npc);
+
+  simulate(physics, 2);
+  assert.ok(root.CFrame.position.y < 30, "the NPC should fall under gravity");
+  const restY = root.CFrame.position.y;
+
+  humanoid.MoveDirection = new Vector3(0, 0, -1);
+  simulate(physics, 1);
+  assert.ok(root.CFrame.position.z < -5, "and walk when told to");
+  assert.ok(Math.abs(root.CFrame.position.y - restY) < 1.5, "staying on the floor");
+});
+
+test("a player's character can be swapped for another model", () => {
+  const game = new DataModel();
+  const player = createInstance("Player", game.Players);
+  player.Name = "Swapper";
+
+  const first = loadCharacterFor(game.GetService("StarterPlayer")).model;
+  first.Parent = game.Workspace;
+  player.setProperty("Character", first);
+  assert.equal(player.Character, first);
+
+  const replacement = createInstance("Model", game.Workspace);
+  replacement.Name = "NewBody";
+  createInstance("Humanoid", replacement);
+  const root = createInstance("Part", replacement);
+  root.Name = "HumanoidRootPart";
+
+  player.setProperty("Character", replacement);
+  assert.equal(player.Character, replacement);
+  assert.equal(game.Players.GetPlayerFromCharacter(replacement), player);
+  assert.equal(game.Players.GetPlayerFromCharacter(first), null);
 });

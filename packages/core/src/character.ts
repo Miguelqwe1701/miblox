@@ -1,5 +1,5 @@
 import { CFrame, Color3, Vector3 } from "./math.js";
-import { createInstance } from "./instance.js";
+import { createInstance, type Instance } from "./instance.js";
 import { BasePart, Humanoid, Model, Motor6D, Part } from "./classes.js";
 
 /**
@@ -156,6 +156,60 @@ export function buildCharacter(opts: CharacterOptions = {}): Model {
   humanoid.setParent(model);
 
   return model;
+}
+
+/**
+ * Builds the character a player should spawn with.
+ *
+ * Looks for a Model named "StarterCharacter" under StarterPlayer and clones it,
+ * exactly as Roblox does, so a place can ship its own rig without touching the
+ * engine. Anything under StarterCharacterScripts is copied into the result.
+ *
+ * A custom rig only has to provide two things for the engine to drive it: a
+ * Humanoid, and a part named "HumanoidRootPart". Everything else about it is
+ * the place's business.
+ */
+export function loadCharacterFor(
+  starterPlayer: Instance | null,
+  opts: CharacterOptions = {},
+): { model: Model; custom: boolean } {
+  const template = starterPlayer?.FindFirstChild("StarterCharacter");
+  const position = opts.position ?? new Vector3(0, 10, 0);
+
+  let model: Model;
+  let custom = false;
+  if (template instanceof Model && isValidRig(template)) {
+    const clone = template.Clone();
+    if (clone instanceof Model) {
+      model = clone;
+      custom = true;
+      model.Name = opts.name ?? "Character";
+      // The template sits wherever the builder left it; move it to the spawn.
+      const root = model.FindFirstChild("HumanoidRootPart") as BasePart | null;
+      if (root) {
+        model.PrimaryPart = root;
+        model.MoveTo(position);
+      }
+    } else {
+      model = buildCharacter(opts);
+    }
+  } else {
+    model = buildCharacter(opts);
+  }
+
+  const scripts = starterPlayer?.FindFirstChild("StarterCharacterScripts");
+  for (const script of scripts?.GetChildren() ?? []) {
+    const copy = script.Clone();
+    if (copy) copy.setParent(model);
+  }
+  return { model, custom };
+}
+
+/** A rig the engine can drive: a Humanoid and a part to move it by. */
+export function isValidRig(model: Instance): boolean {
+  return (
+    !!model.FindFirstChildOfClass("Humanoid") && !!model.FindFirstChild("HumanoidRootPart")
+  );
 }
 
 /** Local offsets of each rig part from the root, for client-side animation. */
