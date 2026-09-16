@@ -144,7 +144,7 @@ export class PlaceHost {
   private resolveIdentity(
     message: Extract<ClientMessage, { t: "join" }>,
     connection: Connection,
-  ): { accountId: string; username: string } | undefined | null {
+  ): { accountId: string; username: string; avatar?: Record<string, unknown> } | undefined | null {
     const secret = this.opts.ticketSecret;
     if (!message.session) {
       if (this.opts.allowGuests !== false) return undefined;
@@ -158,7 +158,11 @@ export class PlaceHost {
     }
     try {
       const ticket = verifyTicket(message.session, secret, this.opts.placeId);
-      return { accountId: ticket.accountId, username: ticket.username };
+      return {
+        accountId: ticket.accountId,
+        username: ticket.username,
+        avatar: ticket.avatar,
+      };
     } catch (err) {
       connection.close(err instanceof TicketError ? err.message : "Could not verify your session");
       return null;

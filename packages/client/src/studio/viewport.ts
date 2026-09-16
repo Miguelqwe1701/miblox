@@ -5,6 +5,7 @@ import {
   DataModel,
   Instance as EngineInstance,
   MATERIAL_ID,
+  Model,
   PhysicsWorld,
   Vector3,
   type Lighting,
@@ -178,13 +179,48 @@ export class Viewport {
     );
   }
 
-  /** Frames the camera on an instance. */
+  /**
+   * Frames the camera on an instance.
+   *
+   * Models are framed by their bounding box, which is what you want for a
+   * character: focusing on its root part alone leaves it a speck in the
+   * distance.
+   */
   focusOn(instance: EngineInstance): void {
     if (instance instanceof BasePart) {
       const p = instance.CFrame.position;
       this.target.set(p.x, p.y, p.z);
-      this.distance = Math.max(20, instance.Size.magnitude * 2.5);
+      this.distance = Math.max(12, instance.Size.magnitude * 2.5);
+      return;
     }
+    if (instance instanceof Model) {
+      const box = instance.GetBoundingBox();
+      if (box.size.magnitude === 0) return;
+      this.target.set(box.center.x, box.center.y, box.center.z);
+      this.distance = Math.max(12, box.size.magnitude * 1.8);
+      return;
+    }
+    // A container: frame everything inside it.
+    const parts = instance.GetDescendants().filter((d): d is BasePart => d instanceof BasePart);
+    if (!parts.length) return;
+    let min = parts[0].CFrame.position;
+    let max = min;
+    for (const part of parts) {
+      const bounds = part.getBoundingBox();
+      min = new Vector3(
+        Math.min(min.x, bounds.min.x),
+        Math.min(min.y, bounds.min.y),
+        Math.min(min.z, bounds.min.z),
+      );
+      max = new Vector3(
+        Math.max(max.x, bounds.max.x),
+        Math.max(max.y, bounds.max.y),
+        Math.max(max.z, bounds.max.z),
+      );
+    }
+    const centre = min.add(max).mul(0.5);
+    this.target.set(centre.x, centre.y, centre.z);
+    this.distance = Math.max(12, max.sub(min).magnitude * 1.6);
   }
 
   // -- input ---------------------------------------------------------------

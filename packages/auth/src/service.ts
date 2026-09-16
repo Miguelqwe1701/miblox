@@ -3,6 +3,7 @@ import {
   type Account,
   type AccountStore,
   type MigoodLink,
+  defaultAvatar,
   newAccountId,
   suggestUsername,
   UsernameError,
@@ -213,9 +214,29 @@ export class AuthService {
       link,
       createdAt: now,
       lastSeenAt: now,
+      avatar: defaultAvatar(),
     };
     await this.store.put(account);
     return { account, session: this.issueSession(account), created: true };
+  }
+
+  /** Replaces a player's avatar. */
+  async setAvatar(accountId: string, avatar: unknown): Promise<Account> {
+    const account = await this.store.get(accountId);
+    if (!account) throw new AuthError("No such account", "invalid_token");
+    account.avatar = avatar as Account["avatar"];
+    await this.store.put(account);
+    return account;
+  }
+
+  /** Looks an account up by its MiBlox username, for avatar lookups. */
+  findByUsername(username: string): Promise<Account | null> {
+    return this.store.findByUsername(username);
+  }
+
+  /** Every account, for the player directory. */
+  allAccounts(): Promise<Account[]> {
+    return this.store.all();
   }
 
   /** Renames a MiBlox account. Allowed at any time; the link is untouched. */

@@ -338,3 +338,84 @@ test("Instance.new refuses an unknown class", () => {
   assert.equal(ctx.errors.length, 1);
   assert.match(ctx.errors[0], /Unable to create an Instance/);
 });
+
+test("a script can dress a character with a HumanoidDescription", () => {
+  const ctx = makeEnv();
+  runScript(
+    ctx,
+    `
+      local Players = game:GetService("Players")
+
+      local description = Instance.new("HumanoidDescription")
+      description.Shirt = 1001
+      description.Pants = 2001
+      description.HatAccessory = "4003"
+      description.HeadColor = Color3.fromRGB(255, 200, 150)
+      description.WalkSpeed = 24
+
+      local model = Players:CreateHumanoidModelFromDescription(description)
+      model.Name = "Dressed"
+      model.Parent = workspace
+
+      local humanoid = model:FindFirstChildOfClass("Humanoid")
+      print(humanoid.WalkSpeed, model:FindFirstChild("Crown") ~= nil)
+    `,
+  );
+  assert.deepEqual(ctx.errors, []);
+  assert.deepEqual(ctx.prints, ["24\ttrue"]);
+
+  const model = ctx.game.Workspace.FindFirstChild("Dressed");
+  assert.ok(model, "the model should be in the world");
+  assert.equal(model.FindFirstChildOfClass("Shirt").AssetId, 1001);
+  assert.equal(model.FindFirstChildOfClass("Pants").AssetId, 2001);
+});
+
+test("Humanoid:ApplyDescription re-dresses a character in place", () => {
+  const ctx = makeEnv();
+  runScript(
+    ctx,
+    `
+      local Players = game:GetService("Players")
+      local description = Instance.new("HumanoidDescription")
+      description.Shirt = 1001
+      local model = Players:CreateHumanoidModelFromDescription(description)
+      model.Name = "Changer"
+      model.Parent = workspace
+
+      local humanoid = model:FindFirstChildOfClass("Humanoid")
+      local newLook = Instance.new("HumanoidDescription")
+      newLook.Shirt = 1004
+      newLook.HairAccessory = "5002"
+      humanoid:ApplyDescription(newLook)
+
+      local applied = humanoid:GetAppliedDescription()
+      print(applied.Shirt, model:FindFirstChild("Long Hair") ~= nil)
+    `,
+  );
+  assert.deepEqual(ctx.errors, []);
+  assert.deepEqual(ctx.prints, ["1004\ttrue"]);
+});
+
+test("ApplyDescription rejects something that is not a description", () => {
+  const ctx = makeEnv();
+  runScript(
+    ctx,
+    `
+      local Players = game:GetService("Players")
+      local model = Players:CreateHumanoidModelFromDescription(Instance.new("HumanoidDescription"))
+      model.Parent = workspace
+      model:FindFirstChildOfClass("Humanoid"):ApplyDescription(Instance.new("Part"))
+    `,
+  );
+  assert.equal(ctx.errors.length, 1);
+  assert.match(ctx.errors[0], /expects a HumanoidDescription/);
+});
+
+test("accessory and asset enums are available to scripts", () => {
+  const ctx = makeEnv();
+  runScript(
+    ctx,
+    `print(Enum.AccessoryType.Hair, Enum.AssetType.Shirt, Enum.BodyPart.Torso)`,
+  );
+  assert.deepEqual(ctx.prints, ["Hair\tShirt\tTorso"]);
+});

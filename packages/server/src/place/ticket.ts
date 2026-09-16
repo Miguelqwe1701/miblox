@@ -13,6 +13,14 @@ export interface Ticket {
   accountId: string;
   username: string;
   placeId: string;
+  /**
+   * The player's HumanoidDescription.
+   *
+   * Carried in the ticket rather than looked up, so a game server needs no
+   * database connection at all. It is inside the signature, so a client cannot
+   * edit its own appearance on the way in.
+   */
+  avatar?: Record<string, unknown>;
   /** Unix seconds. Tickets are deliberately short-lived. */
   exp: number;
 }
@@ -58,7 +66,12 @@ export function verifyTicket(token: string, secret: string, placeId: string): Ti
 }
 
 export function newTicket(
-  opts: { accountId: string; username: string; placeId: string },
+  opts: {
+    accountId: string;
+    username: string;
+    placeId: string;
+    avatar?: Record<string, unknown>;
+  },
   secret: string,
 ): string {
   return signTicket(

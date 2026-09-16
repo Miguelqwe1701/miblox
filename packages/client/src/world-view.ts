@@ -4,8 +4,89 @@ import {
   DataModel,
   Instance as EngineInstance,
   Lighting,
+  MeshPart,
+  builtinMeshName,
+  isBuiltinMesh,
   materialProps,
 } from "@miblox/core";
+
+/**
+ * Shapes the renderer can build without downloading anything.
+ *
+ * Every geometry is unit-sized and centred, so a part's Size scales it the
+ * same way a Block does and nothing needs per-shape placement code.
+ */
+function buildBuiltinMesh(name: string): THREE.BufferGeometry {
+  switch (name) {
+    case "sphere": return new THREE.SphereGeometry(0.5, 20, 14);
+    case "cylinder": return new THREE.CylinderGeometry(0.5, 0.5, 1, 20);
+    case "cone": return new THREE.ConeGeometry(0.5, 1, 20);
+    case "torus": return new THREE.TorusGeometry(0.35, 0.15, 12, 24).rotateX(Math.PI / 2);
+    case "capsule": return new THREE.CapsuleGeometry(0.35, 0.5, 6, 12);
+    case "diamond": return new THREE.OctahedronGeometry(0.5, 0);
+    case "wedge": {
+      // A right-angled prism: half a cube, cut corner to corner.
+      const shape = new THREE.Shape();
+      shape.moveTo(-0.5, -0.5);
+      shape.lineTo(0.5, -0.5);
+      shape.lineTo(-0.5, 0.5);
+      shape.closePath();
+      return new THREE.ExtrudeGeometry(shape, { depth: 1, bevelEnabled: false }).translate(0, 0, -0.5);
+    }
+    case "cap": {
+      // A peaked cap: a shallow dome with a brim.
+      const dome = new THREE.SphereGeometry(0.5, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+      const brim = new THREE.CylinderGeometry(0.62, 0.62, 0.08, 16).translate(0, 0.02, -0.12);
+      return mergeGeometries([dome, brim]);
+    }
+    case "crown": {
+      const band = new THREE.CylinderGeometry(0.5, 0.5, 0.35, 16, 1, true);
+      const points: THREE.BufferGeometry[] = [band];
+      for (let i = 0; i < 6; i++) {
+        const angle = (i / 6) * Math.PI * 2;
+        points.push(
+          new THREE.ConeGeometry(0.12, 0.35, 6).translate(
+            Math.cos(angle) * 0.44,
+            0.32,
+            Math.sin(angle) * 0.44,
+          ),
+        );
+      }
+      return mergeGeometries(points);
+    }
+    default: return new THREE.BoxGeometry(1, 1, 1);
+  }
+}
+
+/** Concatenates geometries into one, so a composite shape is a single mesh. */
+function mergeGeometries(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
+  const positions: number[] = [];
+  const normals: number[] = [];
+  const uvs: number[] = [];
+  for (const part of parts) {
+    const geometry = part.index ? part.toNonIndexed() : part;
+    const position = geometry.getAttribute("position");
+    const normal = geometry.getAttribute("normal");
+    const uv = geometry.getAttribute("uv");
+    for (let i = 0; i < position.count; i++) {
+      positions.push(position.getX(i), position.getY(i), position.getZ(i));
+      if (normal) normals.push(normal.getX(i), normal.getY(i), normal.getZ(i));
+      if (uv) uvs.push(uv.getX(i), uv.getY(i));
+    }
+    if (geometry !== part) geometry.dispose();
+  }
+  const merged = new THREE.BufferGeometry();
+  merged.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  if (normals.length === positions.length) {
+    merged.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
+  } else {
+    merged.computeVertexNormals();
+  }
+  if (uvs.length === (positions.length / 3) * 2) {
+    merged.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+  }
+  return merged;
+}
 
 /**
  * Draws the part tree.
@@ -20,6 +101,8 @@ export class WorldView {
   private readonly objects = new Map<BasePart, THREE.Mesh>();
   private readonly targets = new Map<BasePart, { position: THREE.Vector3; quaternion: THREE.Quaternion }>();
   private readonly geometries = new Map<string, THREE.BufferGeometry>();
+  private readonly textures = new Map<string, THREE.Texture>();
+  private readonly meshRequests = new Map<string, Promise<THREE.BufferGeometry>>();
   /** Parts this client simulates itself are not interpolated. */
   isLocallySimulated: (part: BasePart) => boolean = () => false;
 
@@ -35,10 +118,39 @@ export class WorldView {
     return this.objects.size;
   }
 
+  /** A face texture goes on the front of the head only, not all six sides. */
+  private isFacePart(part: BasePart): boolean {
+    return part.Name === "Head" && !!part.TextureId;
+  }
+
+  /**
+   * Materials for a head: plain skin everywhere, the face on the front.
+   *
+   * BoxGeometry takes six materials in +X, -X, +Y, -Y, +Z, -Z order, and a
+   * character's front is -Z, so the face is the last of the six.
+   */
+  private headMaterials(part: BasePart): THREE.Material[] {
+    const skin = () =>
+      new THREE.MeshLambertMaterial({
+        color: new THREE.Color(part.Color.r, part.Color.g, part.Color.b),
+        flatShading: true,
+      });
+    const face = new THREE.MeshLambertMaterial({
+      color: new THREE.Color(part.Color.r, part.Color.g, part.Color.b),
+      map: this.textureFor(part.TextureId),
+      transparent: true,
+      flatShading: true,
+    });
+    return [skin(), skin(), skin(), skin(), skin(), face];
+  }
+
   private onAdded(inst: EngineInstance): void {
     if (!(inst instanceof BasePart)) return;
     if (this.objects.has(inst)) return;
-    const mesh = new THREE.Mesh(this.geometryFor(inst), this.materialFor(inst));
+    const mesh = new THREE.Mesh(
+      this.geometryFor(inst),
+      this.isFacePart(inst) ? this.headMaterials(inst) : this.materialFor(inst),
+    );
     mesh.name = inst.Name;
     mesh.castShadow = true;
     mesh.receiveShadow = true;
@@ -57,25 +169,109 @@ export class WorldView {
     const mesh = this.objects.get(inst);
     if (!mesh) return;
     this.group.remove(mesh);
-    (mesh.material as THREE.Material).dispose();
+    const material = mesh.material as THREE.Material | THREE.Material[];
+    if (Array.isArray(material)) for (const entry of material) entry.dispose();
+    else material.dispose();
     this.objects.delete(inst);
     this.targets.delete(inst);
   }
 
   /** Unit geometries, scaled per part, so every box shares one buffer. */
   private geometryFor(part: BasePart): THREE.BufferGeometry {
+    if (part instanceof MeshPart && part.MeshId) {
+      if (isBuiltinMesh(part.MeshId)) return this.cachedGeometry(part.MeshId, () =>
+        buildBuiltinMesh(builtinMeshName(part.MeshId)),
+      );
+      // An external mesh is fetched in the background; until it arrives the
+      // part is drawn as a box, which is better than nothing appearing at all.
+      void this.loadExternalMesh(part);
+      return this.cachedGeometry("Block", () => new THREE.BoxGeometry(1, 1, 1));
+    }
+
     const shape = part.Shape ?? "Block";
-    let geometry = this.geometries.get(shape);
+    return this.cachedGeometry(shape, () =>
+      shape === "Ball"
+        ? new THREE.SphereGeometry(0.5, 16, 12)
+        : shape === "Cylinder"
+          ? new THREE.CylinderGeometry(0.5, 0.5, 1, 16)
+          : new THREE.BoxGeometry(1, 1, 1),
+    );
+  }
+
+  private cachedGeometry(key: string, build: () => THREE.BufferGeometry): THREE.BufferGeometry {
+    let geometry = this.geometries.get(key);
     if (!geometry) {
-      geometry =
-        shape === "Ball"
-          ? new THREE.SphereGeometry(0.5, 16, 12)
-          : shape === "Cylinder"
-            ? new THREE.CylinderGeometry(0.5, 0.5, 1, 16)
-            : new THREE.BoxGeometry(1, 1, 1);
-      this.geometries.set(shape, geometry);
+      geometry = build();
+      this.geometries.set(key, geometry);
     }
     return geometry;
+  }
+
+  /**
+   * Loads a glTF/GLB mesh and swaps it in when it arrives.
+   *
+   * The loader is imported on demand: most places use built-in shapes, and
+   * pulling it into the main bundle would cost every player who never sees a
+   * custom mesh.
+   */
+  private async loadExternalMesh(part: MeshPart): Promise<void> {
+    const url = part.MeshId;
+    if (this.meshRequests.has(url)) {
+      const geometry = await this.meshRequests.get(url)!;
+      this.applyGeometry(part, geometry);
+      return;
+    }
+    const request = (async () => {
+      const { GLTFLoader } = await import("three/examples/jsm/loaders/GLTFLoader.js");
+      const gltf = await new GLTFLoader().loadAsync(url);
+      const geometries: THREE.BufferGeometry[] = [];
+      gltf.scene.updateMatrixWorld(true);
+      gltf.scene.traverse((object) => {
+        const mesh = object as THREE.Mesh;
+        if (!mesh.isMesh || !mesh.geometry) return;
+        const geometry = mesh.geometry.clone().applyMatrix4(mesh.matrixWorld);
+        geometries.push(geometry.index ? geometry.toNonIndexed() : geometry);
+      });
+      if (!geometries.length) throw new Error(`${url} contained no meshes`);
+      const merged = mergeGeometries(geometries);
+      for (const geometry of geometries) geometry.dispose();
+      // Normalised into a unit box so Size scales it like every other part.
+      merged.computeBoundingBox();
+      const box = merged.boundingBox!;
+      const size = new THREE.Vector3();
+      box.getSize(size);
+      const centre = new THREE.Vector3();
+      box.getCenter(centre);
+      const largest = Math.max(size.x, size.y, size.z) || 1;
+      merged.translate(-centre.x, -centre.y, -centre.z).scale(1 / largest, 1 / largest, 1 / largest);
+      return merged;
+    })();
+
+    this.meshRequests.set(url, request);
+    try {
+      this.applyGeometry(part, await request);
+    } catch (err) {
+      console.warn(`[miblox] could not load mesh ${url}:`, err);
+      this.meshRequests.delete(url);
+    }
+  }
+
+  private applyGeometry(part: BasePart, geometry: THREE.BufferGeometry): void {
+    const mesh = this.objects.get(part);
+    if (mesh) mesh.geometry = geometry;
+  }
+
+  /** Textures are shared by URL, so a hundred players in one shirt cost one. */
+  private textureFor(url: string): THREE.Texture {
+    let texture = this.textures.get(url);
+    if (!texture) {
+      texture = new THREE.TextureLoader().load(url);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      this.textures.set(url, texture);
+    }
+    return texture;
   }
 
   private materialFor(part: BasePart): THREE.Material {
@@ -85,6 +281,11 @@ export class WorldView {
       transparent: part.Transparency > 0,
       opacity: 1 - part.Transparency,
     });
+    if (part.TextureId) {
+      material.map = this.textureFor(part.TextureId);
+      // A textured part keeps its colour as a tint rather than overriding it.
+      material.color.set(0xffffff);
+    }
     // Neon reads as self-lit; everything else takes scene lighting.
     if (part.Material === "Neon") {
       (material as THREE.MeshLambertMaterial).emissive = new THREE.Color(
@@ -131,8 +332,24 @@ export class WorldView {
       mesh.scale.set(part.Size.x, part.Size.y, part.Size.z);
       mesh.visible = part.Transparency < 1;
 
+      if (Array.isArray(mesh.material)) {
+        // A head with a face: keep the skin colour in step and leave the face
+        // texture alone.
+        for (const entry of mesh.material as THREE.MeshLambertMaterial[]) {
+          entry.color.setRGB(part.Color.r, part.Color.g, part.Color.b);
+        }
+        continue;
+      }
       const material = mesh.material as THREE.MeshLambertMaterial;
-      material.color.setRGB(part.Color.r, part.Color.g, part.Color.b);
+      const textureId = part.TextureId ?? "";
+      const currentTexture = (material.map?.userData.url as string) ?? "";
+      if (textureId !== currentTexture) {
+        material.map = textureId ? this.textureFor(textureId) : null;
+        if (material.map) material.map.userData.url = textureId;
+        material.needsUpdate = true;
+      }
+      if (material.map) material.color.setRGB(1, 1, 1);
+      else material.color.setRGB(part.Color.r, part.Color.g, part.Color.b);
       const opacity = 1 - part.Transparency;
       if (material.opacity !== opacity) {
         material.opacity = opacity;
@@ -151,6 +368,8 @@ export class WorldView {
     for (const part of [...this.objects.keys()]) this.onRemoved(part);
     for (const geometry of this.geometries.values()) geometry.dispose();
     this.geometries.clear();
+    for (const texture of this.textures.values()) texture.dispose();
+    this.textures.clear();
   }
 }
 

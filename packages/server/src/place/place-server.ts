@@ -13,7 +13,9 @@ import {
   deserializePlace,
   encodeChunkRLE,
   isEmptyDelta,
+  applyDescriptionTo,
   loadCharacterFor,
+  type HumanoidDescriptionData,
   MATERIAL_ID,
   PROTOCOL_VERSION,
   Terrain,
@@ -77,6 +79,8 @@ export class PlaceServer {
   private readonly log: (message: string) => void;
 
   private sessions = new Map<string, PlayerSession>();
+  /** Each player's HumanoidDescription, from their join ticket. */
+  private appearances = new Map<string, HumanoidDescriptionData | undefined>();
   private timer: ReturnType<typeof setInterval> | null = null;
   private tick = 0;
   private nextUserId = 1;
@@ -248,7 +252,7 @@ export class PlaceServer {
   join(
     connection: Connection,
     message: Extract<ClientMessage, { t: "join" }>,
-    identity?: { accountId: string; username: string },
+      identity?: { accountId: string; username: string; avatar?: Record<string, unknown> },
   ): Player | null {
     if (this.sessions.size >= this.maxPlayers) {
       connection.close("This server is full");
@@ -267,6 +271,8 @@ export class PlaceServer {
     player.DisplayName = username;
     player.UserId = this.nextUserId++;
     player.Platform = message.platform || "Desktop";
+    // Their saved look travels in the ticket, so no lookup is needed here.
+    this.appearances.set(player.id, (identity?.avatar as HumanoidDescriptionData) ?? undefined);
     player.kickHandler = (reason) => connection.close(reason || "You were kicked");
     player.loadCharacterHandler = () => this.spawnCharacter(player);
     player.setParent(this.game.Players);
@@ -314,6 +320,7 @@ export class PlaceServer {
     const session = this.sessions.get(connectionId);
     if (!session) return;
     this.sessions.delete(connectionId);
+    this.appearances.delete(session.player.id);
     this.game.Players.PlayerRemoving.Fire(session.player);
     session.player.Character?.Destroy();
     session.player.Destroy();
@@ -340,6 +347,13 @@ export class PlaceServer {
       position: spawn,
     });
     if (custom) this.log(`${player.Name} spawned with the place's StarterCharacter`);
+
+    // A place that ships its own rig decides how it looks; otherwise the
+    // player's own HumanoidDescription is applied to the default rig.
+    if (!custom) {
+      const description = this.appearances.get(player.id);
+      if (description) applyDescriptionTo(character, description);
+    }
     character.setParent(this.game.Workspace);
 
     const root = character.FindFirstChild("HumanoidRootPart") as BasePart;

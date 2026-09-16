@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { DEFAULT_DESCRIPTION, type HumanoidDescriptionData } from "@miblox/core";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 
@@ -17,6 +18,13 @@ export interface Account {
   link: MigoodLink;
   createdAt: number;
   lastSeenAt: number;
+  /**
+   * How this player's character looks, as a HumanoidDescription.
+   *
+   * Stored as ids rather than URLs, so it is a few hundred bytes per account
+   * and a place can apply it without fetching anything.
+   */
+  avatar?: HumanoidDescriptionData;
   /** Set when a moderator suspends the account; blocks login while present. */
   banned?: { reason: string; until?: number };
 }
@@ -195,4 +203,9 @@ export class JsonAccountStore extends MemoryAccountStore {
 
 export function newAccountId(): string {
   return randomUUID();
+}
+
+/** A new account starts with the default look until the player changes it. */
+export function defaultAvatar(): HumanoidDescriptionData {
+  return JSON.parse(JSON.stringify(DEFAULT_DESCRIPTION)) as HumanoidDescriptionData;
 }

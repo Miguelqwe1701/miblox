@@ -2,6 +2,7 @@ import * as THREE from "three";
 import {
   BasePart,
   CFrame,
+  PhysicsWorld,
   Color3,
   DataModel,
   Instance as EngineInstance,
@@ -17,6 +18,8 @@ import { Explorer, INSERTABLE, Properties } from "./explorer.js";
 import { ScriptEditor } from "./script-editor.js";
 import { Viewport, type Tool } from "./viewport.js";
 import { TestSession, type OutputLine, type TestContext, type TestMode } from "./test-session.js";
+import { PluginHost, type PluginButton } from "./plugins.js";
+import { BUILTIN_PLUGINS } from "./builtin-plugins.js";
 import "./studio.css";
 
 const WASM_URL = "/miblox.wasm";
@@ -38,6 +41,7 @@ class Studio {
   private place: SerializedPlace | null = null;
   private dirty = false;
   private saving = false;
+  private plugins: PluginHost | null = null;
   private test: TestSession | null = null;
   private context: TestContext = "server";
   private held = new Set<string>();
@@ -78,6 +82,19 @@ class Studio {
     this.root.querySelector(".panel-properties")!.appendChild(this.properties.element);
     this.scriptEditor.bind(() => this.markDirty());
     this.root.querySelector(".panel-script")!.appendChild(this.scriptEditor.element);
+
+    this.plugins = new PluginHost(this.game, new PhysicsWorld(this.game.Workspace, this.game.Terrain.voxels), {
+      onButtonsChanged: (buttons) => this.renderPluginButtons(buttons),
+      onNotify: (message) => this.setStatus(message),
+      getSelection: () => this.explorer.selection,
+      setSelection: (instance) => {
+        this.explorer.refresh();
+        this.explorer.select(instance);
+      },
+      onEdited: () => this.markDirty(),
+    });
+    this.plugins.loadAll(BUILTIN_PLUGINS);
+    this.bindPluginManager();
 
     this.viewport = new Viewport(this.root.querySelector(".viewport")!, this.game, {
       onSelect: (instance) => {
@@ -149,6 +166,12 @@ class Studio {
         </div>
       </header>
 
+      <div class="plugin-bar">
+        <span class="plugin-label">Plugins</span>
+        <div class="plugin-buttons"></div>
+        <button class="ghost manage-plugins">Manage…</button>
+      </div>
+
       <main class="layout">
         <aside class="side left">
           <h2>Explorer</h2>
@@ -184,7 +207,27 @@ class Studio {
         </aside>
       </main>
 
-      <div class="status"></div>`;
+      <div class="status"></div>
+
+      <div class="plugin-manager" hidden>
+        <div class="plugin-card">
+          <h3>Plugins</h3>
+          <p class="hint">
+            Plugins are Luau scripts with a <code>plugin</code> global. They add
+            toolbar buttons and act on the world you are editing.
+          </p>
+          <ul class="plugin-list"></ul>
+          <label class="plugin-new">
+            <span>New plugin</span>
+            <input class="plugin-name" type="text" placeholder="Name" />
+          </label>
+          <textarea class="plugin-source" spellcheck="false" placeholder="plugin:CreateButton(&quot;Hello&quot;, &quot;Say hello&quot;, function()&#10;&#9;plugin:Notify(&quot;Hello from a plugin&quot;)&#10;end)"></textarea>
+          <div class="plugin-actions">
+            <button class="primary add-plugin">Add plugin</button>
+            <button class="ghost close-plugins">Close</button>
+          </div>
+        </div>
+      </div>`;
 
     this.bindToolbar();
     this.bindTabs();
@@ -280,6 +323,84 @@ class Studio {
       if (this.test) this.test.output.length = 0;
       this.renderOutput();
     });
+  }
+
+  // -- plugins -------------------------------------------------------------
+
+  private renderPluginButtons(buttons: PluginButton[]): void {
+    const bar = this.root.querySelector<HTMLElement>(".plugin-buttons")!;
+    bar.innerHTML = "";
+    if (!buttons.length) {
+      bar.innerHTML = `<span class="hint">No plugins loaded.</span>`;
+      return;
+    }
+    for (const button of buttons) {
+      const element = document.createElement("button");
+      element.className = "ghost plugin-button";
+      element.textContent = button.text;
+      element.title = `${button.tooltip} (${button.pluginName})`;
+      element.addEventListener("click", () => button.run());
+      bar.appendChild(element);
+    }
+  }
+
+  private bindPluginManager(): void {
+    const manager = this.root.querySelector<HTMLElement>(".plugin-manager")!;
+    this.root.querySelector<HTMLButtonElement>(".manage-plugins")!.addEventListener("click", () => {
+      this.renderPluginList();
+      manager.hidden = false;
+    });
+    this.root.querySelector<HTMLButtonElement>(".close-plugins")!.addEventListener("click", () => {
+      manager.hidden = true;
+    });
+    this.root.querySelector<HTMLButtonElement>(".add-plugin")!.addEventListener("click", () => {
+      const name = this.root.querySelector<HTMLInputElement>(".plugin-name")!;
+      const source = this.root.querySelector<HTMLTextAreaElement>(".plugin-source")!;
+      if (!name.value.trim() || !source.value.trim()) {
+        this.setStatus("A plugin needs a name and some code", true);
+        return;
+      }
+      this.plugins?.addPlugin(name.value.trim(), source.value);
+      name.value = "";
+      source.value = "";
+      this.renderPluginList();
+      this.setStatus("Plugin added");
+    });
+  }
+
+  private renderPluginList(): void {
+    const list = this.root.querySelector<HTMLElement>(".plugin-list")!;
+    list.innerHTML = "";
+    for (const plugin of this.plugins?.listPlugins() ?? []) {
+      const row = document.createElement("li");
+      const toggle = document.createElement("input");
+      toggle.type = "checkbox";
+      toggle.checked = plugin.enabled !== false;
+      toggle.addEventListener("change", () => {
+        this.plugins?.setEnabled(plugin.name, toggle.checked);
+      });
+
+      const label = document.createElement("span");
+      label.textContent = plugin.name;
+      row.append(toggle, label);
+
+      if (plugin.builtin) {
+        const tag = document.createElement("span");
+        tag.className = "pill";
+        tag.textContent = "built in";
+        row.appendChild(tag);
+      } else {
+        const remove = document.createElement("button");
+        remove.className = "ghost";
+        remove.textContent = "Remove";
+        remove.addEventListener("click", () => {
+          this.plugins?.removePlugin(plugin.name);
+          this.renderPluginList();
+        });
+        row.appendChild(remove);
+      }
+      list.appendChild(row);
+    }
   }
 
   // -- testing -------------------------------------------------------------
@@ -574,6 +695,9 @@ class Studio {
       if (this.test) {
         this.driveTestCharacter();
         this.test.step(dt);
+      } else {
+        // Plugins only tick while editing; a test has its own VMs.
+        this.plugins?.step(dt);
       }
       this.viewport.render();
       const stats = this.viewport.terrainStats;

@@ -173,6 +173,18 @@ function buildEnumTable(): LuaTable {
   addEnum("CameraMode", ["Classic", "LockFirstPerson"]);
   addEnum("RaycastFilterType", ["Exclude", "Include"]);
   addEnum("NormalId", ["Top", "Bottom", "Left", "Right", "Front", "Back"]);
+  addEnum("AccessoryType", [
+    "Hat",
+    "Hair",
+    "Face",
+    "Neck",
+    "Shoulder",
+    "Front",
+    "Back",
+    "Waist",
+  ]);
+  addEnum("AssetType", ["Shirt", "Pants", "TShirt", "Hat", "Hair", "Face", "Mesh"]);
+  addEnum("BodyPart", ["Head", "Torso", "LeftArm", "RightArm", "LeftLeg", "RightLeg"]);
   // Terrain materials, indexed by voxel id. Air is included on purpose: it is
   // how a script clears a region, which is the only way to carve out a space
   // in procedurally generated ground.

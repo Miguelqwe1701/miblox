@@ -260,3 +260,92 @@ button.ghost:hover { border-color: var(--accent); }
 .out.client .out-tag { color: #b69dff; }
 .out.error { color: var(--danger); }
 .out.warn { color: #ffc078; }
+
+/* -------------------------------------------------------------- plugins -- */
+
+.plugin-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  background: #10151d;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.plugin-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+.plugin-buttons { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+.plugin-button { padding: 0.3rem 0.7rem; font-size: 0.86rem; }
+.plugin-bar .hint { color: #5e6b80; font-size: 0.82rem; }
+.plugin-bar .manage-plugins { margin-left: auto; padding: 0.3rem 0.7rem; font-size: 0.82rem; }
+
+.plugin-manager {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: #05080ee6;
+  z-index: 20;
+}
+.plugin-card {
+  width: min(42rem, 92vw);
+  max-height: 86vh;
+  overflow: auto;
+  padding: 1.4rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.plugin-card h3 { margin: 0; }
+.plugin-card .hint { margin: 0; color: var(--muted); font-size: 0.85rem; }
+.plugin-card code { background: #0a0e15; padding: 0.1em 0.35em; border-radius: 4px; }
+
+.plugin-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.35rem; }
+.plugin-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.6rem;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.plugin-list input[type="checkbox"] { accent-color: var(--accent); }
+.plugin-list .ghost { margin-left: auto; padding: 0.2rem 0.6rem; font-size: 0.8rem; }
+.pill {
+  margin-left: auto;
+  padding: 0.1rem 0.5rem;
+  background: #ffffff0d;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.plugin-new { display: flex; align-items: center; gap: 0.6rem; color: var(--muted); }
+.plugin-new input {
+  flex: 1;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 0.35rem 0.5rem;
+}
+.plugin-source {
+  min-height: 11rem;
+  resize: vertical;
+  background: #0a0e15;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.6rem;
+  color: #d8e3f2;
+  font: 12.5px/1.55 ui-monospace, "SF Mono", Menlo, monospace;
+  tab-size: 4;
+}
+.plugin-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }

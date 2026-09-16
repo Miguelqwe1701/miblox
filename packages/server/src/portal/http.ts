@@ -9,7 +9,13 @@ import {
   newState,
   type Account,
 } from "@miblox/auth";
-import type { SerializedPlace } from "@miblox/core";
+import {
+  BUILTIN_ASSETS,
+  DEFAULT_DESCRIPTION,
+  TEMPLATE_DESCRIPTION,
+  validateDescription,
+  type SerializedPlace,
+} from "@miblox/core";
 import { ServerManager, type GameDefinition } from "./manager.js";
 import { newTicket } from "../place/ticket.js";
 
@@ -110,6 +116,23 @@ export class PortalServer {
 
     if (path === "/api/join" && method === "POST") {
       return this.join(req, res);
+    }
+
+    // -- avatars and assets -------------------------------------------------
+    if (path === "/api/assets" && method === "GET") {
+      // The whole catalogue in one response: it is small, and the avatar
+      // editor and the Studio plugins all want the same list.
+      return sendJson(res, 200, { assets: BUILTIN_ASSETS });
+    }
+
+    if (path === "/api/avatars" && method === "GET") {
+      return this.listAvatars(res);
+    }
+    if (path.startsWith("/api/avatars/") && method === "GET") {
+      return this.readAvatar(decodeURIComponent(path.slice("/api/avatars/".length)), res);
+    }
+    if (path === "/api/me/avatar" && method === "PUT") {
+      return this.writeOwnAvatar(req, res);
     }
 
     // -- studio ------------------------------------------------------------
@@ -334,6 +357,7 @@ export class PortalServer {
         accountId: account?.id ?? "",
         username: account?.username ?? "Guest",
         placeId: server.id,
+        avatar: (account?.avatar ?? DEFAULT_DESCRIPTION) as Record<string, unknown>,
       },
       this.opts.ticketSecret,
     );
@@ -346,6 +370,71 @@ export class PortalServer {
       guest: !account,
       username: account?.username ?? null,
     });
+  }
+
+  // -- avatars -------------------------------------------------------------
+
+  /**
+   * The player directory the character adder browses.
+   *
+   * Only usernames, display names and looks: nothing here identifies the
+   * Migood account behind a player, which is not any place's business.
+   */
+  private async listAvatars(res: ServerResponse): Promise<void> {
+    const players = this.opts.auth
+      ? (await this.opts.auth.allAccounts()).map((account) => ({
+          username: account.username,
+          displayName: account.link.displayName || account.username,
+          avatar: account.avatar ?? DEFAULT_DESCRIPTION,
+        }))
+      : [];
+
+    sendJson(res, 200, {
+      // Always offered, so the adder works before anyone has signed up and
+      // on a server with no sign-in configured at all.
+      templates: [
+        { username: "Template", displayName: "Template player", avatar: TEMPLATE_DESCRIPTION },
+        { username: "Default", displayName: "Default avatar", avatar: DEFAULT_DESCRIPTION },
+      ],
+      players,
+    });
+  }
+
+  private async readAvatar(username: string, res: ServerResponse): Promise<void> {
+    if (username.toLowerCase() === "template") {
+      return sendJson(res, 200, { username: "Template", avatar: TEMPLATE_DESCRIPTION });
+    }
+    if (username.toLowerCase() === "default") {
+      return sendJson(res, 200, { username: "Default", avatar: DEFAULT_DESCRIPTION });
+    }
+    if (!this.opts.auth) return sendJson(res, 404, { error: "No such player" });
+
+    const account = await this.opts.auth.findByUsername(username);
+    if (!account) return sendJson(res, 404, { error: "No such player" });
+    sendJson(res, 200, {
+      username: account.username,
+      displayName: account.link.displayName || account.username,
+      avatar: account.avatar ?? DEFAULT_DESCRIPTION,
+    });
+  }
+
+  private async writeOwnAvatar(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const auth = this.opts.auth;
+    if (!auth) return sendJson(res, 503, { error: "Sign-in is not configured on this server" });
+    const account = await this.currentAccount(req);
+    if (!account) return sendJson(res, 401, { error: "Sign in first" });
+
+    const body = await readJson<{ avatar?: Record<string, unknown> }>(req);
+    if (!body?.avatar || typeof body.avatar !== "object") {
+      return sendJson(res, 400, { error: "An avatar description is required" });
+    }
+    // Checked here rather than trusted: a client could otherwise store a hat
+    // id in the pants slot and every place would then build it wrong.
+    const problems = validateDescription(body.avatar);
+    if (problems.length) return sendJson(res, 400, { error: problems.join("; ") });
+
+    const updated = await auth.setAvatar(account.id, body.avatar);
+    sendJson(res, 200, { avatar: updated.avatar });
   }
 
   // -- studio: reading and writing places ----------------------------------

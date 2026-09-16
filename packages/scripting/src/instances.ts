@@ -19,6 +19,11 @@ import {
   Workspace,
   createInstance,
   isRegisteredClass,
+  buildAvatar,
+  describeAvatar,
+  fromDescriptionInstance,
+  toDescriptionInstance,
+  HumanoidDescription,
   MATERIAL_ID,
 } from "@miblox/core";
 import {
@@ -515,6 +520,24 @@ export class InstanceBridge {
       if (key === "GetState") {
         return nativeFn("GetState", (a) => [(InstanceBridge.unwrap(a[0]) as Humanoid).state]);
       }
+      if (key === "ApplyDescription") {
+        return nativeFn("ApplyDescription", (a) => {
+          const humanoid = InstanceBridge.unwrap(a[0]) as Humanoid;
+          const description = this.asInstance(a[1], "Humanoid:ApplyDescription");
+          if (description.className !== "HumanoidDescription") {
+            throw new LuaError("Humanoid:ApplyDescription expects a HumanoidDescription");
+          }
+          humanoid.ApplyDescription(description as HumanoidDescription);
+          return [];
+        });
+      }
+      if (key === "GetAppliedDescription") {
+        return nativeFn("GetAppliedDescription", (a) => {
+          const humanoid = InstanceBridge.unwrap(a[0]) as Humanoid;
+          const description = humanoid.GetAppliedDescription();
+          return [description ? this.wrapInstance(description) : undefined];
+        });
+      }
     }
 
     if (inst instanceof Terrain) {
@@ -586,6 +609,23 @@ export class InstanceBridge {
           const character = a[1] === undefined ? null : this.asInstance(a[1], "GetPlayerFromCharacter");
           const found = (InstanceBridge.unwrap(a[0]) as Players).GetPlayerFromCharacter(character);
           return [found ? this.wrapInstance(found) : undefined];
+        });
+      }
+      if (key === "CreateHumanoidModelFromDescription") {
+        return nativeFn("CreateHumanoidModelFromDescription", (a) => {
+          const description = this.asInstance(a[1], "CreateHumanoidModelFromDescription");
+          if (description.className !== "HumanoidDescription") {
+            throw new LuaError("CreateHumanoidModelFromDescription expects a HumanoidDescription");
+          }
+          const model = buildAvatar(fromDescriptionInstance(description as HumanoidDescription));
+          return [this.wrapInstance(model)];
+        });
+      }
+      if (key === "GetHumanoidDescriptionFromCharacter") {
+        return nativeFn("GetHumanoidDescriptionFromCharacter", (a) => {
+          const character = this.asInstance(a[1], "GetHumanoidDescriptionFromCharacter");
+          const instance = toDescriptionInstance(describeAvatar(character as Model));
+          return [this.wrapInstance(instance)];
         });
       }
       if (key === "GetPlayerByUserId") {

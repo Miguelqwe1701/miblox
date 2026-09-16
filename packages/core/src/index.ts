@@ -9,4 +9,6 @@ export * from "./datamodel.js";
 export * from "./serialize.js";
 export * from "./physics.js";
 export * from "./character.js";
+export * from "./assets.js";
+export * from "./avatar.js";
 export * from "./protocol.js";

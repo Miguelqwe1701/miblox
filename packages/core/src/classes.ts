@@ -69,6 +69,8 @@ export class BasePart extends Instance {
   CanQuery = true;
   Massless = false;
   Shape = "Block";
+  /** Image URL drawn over this part. Shirts and pants are just this. */
+  TextureId = "";
   CustomPhysicalProperties: { density?: number; friction?: number; elasticity?: number } | null = null;
 
   /** Linear/angular velocity live on the part so physics stays data-driven. */
@@ -155,6 +157,7 @@ const basePartSchema: PropSchema = {
   CanQuery: p("boolean", true),
   Massless: p("boolean", false),
   Shape: p("string", "Block"),
+  TextureId: p("string", ""),
   AssemblyLinearVelocity: p("Vector3", Vector3.zero),
   AssemblyAngularVelocity: p("Vector3", Vector3.zero),
   NetworkOwnerId: p("string", ""),
@@ -189,6 +192,43 @@ registerClass("SpawnLocation", SpawnLocation, {
   Neutral: p("boolean", true),
   Duration: p("number", 0),
 });
+
+/**
+ * A part drawn as a mesh rather than a primitive.
+ *
+ * `MeshId` is either `builtin:<name>` for one of the shapes the renderer can
+ * generate itself, or a URL to a glTF/GLB file. Keeping both behind one
+ * property means a place can start with built-ins and move to real assets
+ * without changing anything that refers to the part.
+ */
+export class MeshPart extends BasePart {
+  override readonly className: string = "MeshPart";
+  MeshId = "";
+  MeshScale: Vector3 = Vector3.one;
+  protected override ancestryClassNames(): string[] {
+    return ["MeshPart", "BasePart", "PVInstance", "Instance"];
+  }
+}
+const meshPartSchema: PropSchema = {
+  ...basePartSchema,
+  MeshId: p("string", ""),
+  MeshScale: p("Vector3", Vector3.one),
+};
+registerClass("MeshPart", MeshPart, meshPartSchema);
+
+/**
+ * The same part under the name the editor's import flow uses.
+ *
+ * Registered as its own class rather than an alias so a place file that says
+ * Mesh3D loads back as Mesh3D, and IsA("MeshPart") still answers true.
+ */
+export class Mesh3D extends MeshPart {
+  override readonly className = "Mesh3D";
+  protected override ancestryClassNames(): string[] {
+    return ["Mesh3D", "MeshPart", "BasePart", "PVInstance", "Instance"];
+  }
+}
+registerClass("Mesh3D", Mesh3D, meshPartSchema);
 
 export class Model extends Instance {
   readonly className = "Model";
@@ -293,6 +333,25 @@ export class Humanoid extends Instance {
     void relativeToCamera;
     this.setProperty("MoveDirection", direction.magnitude > 1 ? direction.unit : direction);
   }
+
+  /**
+   * Bound by the avatar module.
+   *
+   * Applying a description means rebuilding clothing and accessories, which
+   * needs the asset catalogue; wiring it in here rather than importing it
+   * keeps classes.ts free of a dependency on it.
+   */
+  applyDescriptionHandler?: (description: HumanoidDescription) => void;
+
+  ApplyDescription(description: HumanoidDescription): void {
+    this.applyDescriptionHandler?.(description);
+  }
+
+  describeHandler?: () => HumanoidDescription;
+
+  GetAppliedDescription(): HumanoidDescription | undefined {
+    return this.describeHandler?.();
+  }
 }
 registerClass("Humanoid", Humanoid, {
   Health: p("number", 100),
@@ -307,11 +366,152 @@ registerClass("Humanoid", Humanoid, {
   state: p("string", "Running"),
 });
 
+/**
+ * A hat or other worn item.
+ *
+ * Contains a part named "Handle"; the rig positions that handle at the named
+ * attachment point, offset by `AttachmentOffset`. This is the same shape
+ * Roblox uses, so accessories built for one work in the other.
+ */
 export class Accessory extends Instance {
   readonly className = "Accessory";
-  AttachmentPoint = "Head";
+  AttachmentPoint = "Hat";
+  AttachmentOffset: Vector3 = Vector3.zero;
+  /** Hat, Hair, Face, Neck, Shoulder, Front, Back or Waist. */
+  AccessoryType = "Hat";
+  /** Catalogue id this came from, so a description can be read back out. */
+  AssetId = 0;
 }
-registerClass("Accessory", Accessory, { AttachmentPoint: p("string", "Head") });
+registerClass("Accessory", Accessory, {
+  AttachmentPoint: p("string", "Hat"),
+  AttachmentOffset: p("Vector3", Vector3.zero),
+  AccessoryType: p("string", "Hat"),
+  AssetId: p("number", 0),
+});
+
+/** Clothing. The template is an image URL applied to the torso and limbs. */
+export class Shirt extends Instance {
+  readonly className = "Shirt";
+  ShirtTemplate = "";
+  /** Catalogue id this was built from, or 0 when set from a raw URL. */
+  AssetId = 0;
+}
+registerClass("Shirt", Shirt, { ShirtTemplate: p("string", ""), AssetId: p("number", 0) });
+
+export class Pants extends Instance {
+  readonly className = "Pants";
+  PantsTemplate = "";
+  AssetId = 0;
+}
+registerClass("Pants", Pants, { PantsTemplate: p("string", ""), AssetId: p("number", 0) });
+
+/** A graphic printed on the front of the torso. */
+export class ShirtGraphic extends Instance {
+  readonly className = "ShirtGraphic";
+  Graphic = "";
+  AssetId = 0;
+}
+registerClass("ShirtGraphic", ShirtGraphic, { Graphic: p("string", ""), AssetId: p("number", 0) });
+
+/**
+ * A complete description of how a character looks.
+ *
+ * Every wearable is a catalogue id, so this is a couple of dozen numbers: it
+ * stores on an account in a few hundred bytes, replicates as ordinary
+ * property state, and can be applied to any rig with a Humanoid.
+ *
+ * Mirrors Roblox's HumanoidDescription, including its convention that
+ * accessory fields hold comma-separated id lists so a character can wear
+ * several of the same kind.
+ */
+export class HumanoidDescription extends Instance {
+  readonly className = "HumanoidDescription";
+
+  // Body colours
+  HeadColor: Color3 = Color3.fromHex(0xf3d9a4);
+  TorsoColor: Color3 = Color3.fromHex(0x3b6ea5);
+  LeftArmColor: Color3 = Color3.fromHex(0xf3d9a4);
+  RightArmColor: Color3 = Color3.fromHex(0xf3d9a4);
+  LeftLegColor: Color3 = Color3.fromHex(0x2e4a63);
+  RightLegColor: Color3 = Color3.fromHex(0x2e4a63);
+
+  // Clothing, by catalogue id. 0 means nothing in that slot.
+  Shirt = 0;
+  Pants = 0;
+  GraphicTShirt = 0;
+  Face = 0;
+
+  // Accessories, as comma-separated id lists.
+  HatAccessory = "";
+  HairAccessory = "";
+  FaceAccessory = "";
+  NeckAccessory = "";
+  ShouldersAccessory = "";
+  FrontAccessory = "";
+  BackAccessory = "";
+  WaistAccessory = "";
+
+  // Scale
+  HeightScale = 1;
+  WidthScale = 1;
+  HeadScale = 1;
+  BodyTypeScale = 0;
+  ProportionScale = 0;
+
+  // Humanoid settings carried along with the look, as Roblox does.
+  WalkSpeed = 16;
+  JumpPower = 50;
+  MaxHealth = 100;
+  DisplayName = "";
+}
+registerClass("HumanoidDescription", HumanoidDescription, {
+  HeadColor: p("Color3", Color3.fromHex(0xf3d9a4)),
+  TorsoColor: p("Color3", Color3.fromHex(0x3b6ea5)),
+  LeftArmColor: p("Color3", Color3.fromHex(0xf3d9a4)),
+  RightArmColor: p("Color3", Color3.fromHex(0xf3d9a4)),
+  LeftLegColor: p("Color3", Color3.fromHex(0x2e4a63)),
+  RightLegColor: p("Color3", Color3.fromHex(0x2e4a63)),
+  Shirt: p("number", 0),
+  Pants: p("number", 0),
+  GraphicTShirt: p("number", 0),
+  Face: p("number", 0),
+  HatAccessory: p("string", ""),
+  HairAccessory: p("string", ""),
+  FaceAccessory: p("string", ""),
+  NeckAccessory: p("string", ""),
+  ShouldersAccessory: p("string", ""),
+  FrontAccessory: p("string", ""),
+  BackAccessory: p("string", ""),
+  WaistAccessory: p("string", ""),
+  HeightScale: p("number", 1),
+  WidthScale: p("number", 1),
+  HeadScale: p("number", 1),
+  BodyTypeScale: p("number", 0),
+  ProportionScale: p("number", 0),
+  WalkSpeed: p("number", 16),
+  JumpPower: p("number", 50),
+  MaxHealth: p("number", 100),
+  DisplayName: p("string", ""),
+});
+
+/** Per-limb skin colour, so a rig does not have to bake it into each part. */
+export class BodyColors extends Instance {
+  readonly className = "BodyColors";
+  HeadColor: Color3 = Color3.fromHex(0xf3d9a4);
+  TorsoColor: Color3 = Color3.fromHex(0x3b6ea5);
+  LeftArmColor: Color3 = Color3.fromHex(0xf3d9a4);
+  RightArmColor: Color3 = Color3.fromHex(0xf3d9a4);
+  LeftLegColor: Color3 = Color3.fromHex(0x2e4a63);
+  RightLegColor: Color3 = Color3.fromHex(0x2e4a63);
+}
+registerClass("BodyColors", BodyColors, {
+  HeadColor: p("Color3", Color3.fromHex(0xf3d9a4)),
+  TorsoColor: p("Color3", Color3.fromHex(0x3b6ea5)),
+  LeftArmColor: p("Color3", Color3.fromHex(0xf3d9a4)),
+  RightArmColor: p("Color3", Color3.fromHex(0xf3d9a4)),
+  LeftLegColor: p("Color3", Color3.fromHex(0x2e4a63)),
+  RightLegColor: p("Color3", Color3.fromHex(0x2e4a63)),
+});
 
 // ---------------------------------------------------------------------------
 // Scripts
