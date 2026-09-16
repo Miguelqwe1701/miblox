@@ -93,6 +93,7 @@ export class TestSession {
 
   start(): void {
     this.log("server", "print", `Test ${this.mode === "play" ? "play" : "run"} started`);
+    this.primeTerrain();
     this.runServerScripts();
 
     if (this.mode === "play") {
@@ -103,6 +104,22 @@ export class TestSession {
     // the world is built before anything looks at it.
     this.server.step(0);
     this.client.step(0);
+  }
+
+  /**
+   * Generates the terrain around the origin before anything looks at it.
+   *
+   * Chunks are otherwise created lazily, so a test would open over a patchwork
+   * of whatever the startup scripts happened to touch.
+   */
+  private primeTerrain(): void {
+    const voxels = this.game.Terrain.voxels;
+    for (let cy = -1; cy <= 2; cy++) {
+      for (let cz = -3; cz <= 3; cz++) {
+        for (let cx = -3; cx <= 3; cx++) voxels.getChunk(cx, cy, cz);
+      }
+    }
+    voxels.dirtyChunks.clear();
   }
 
   private runServerScripts(): void {

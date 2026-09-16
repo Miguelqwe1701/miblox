@@ -112,8 +112,17 @@ export class Controls {
       this.state.lookPitch -= event.movementY * scale * (this.invertY ? -1 : 1);
     };
     const down = (event: MouseEvent) => {
-      if (event.button === 0) this.state.primary = true;
-      if (event.button === 2) this.state.secondary = true;
+      // The press is latched here rather than derived in update(): a quick
+      // click's mousedown and mouseup can both land between two frames, and
+      // deriving it from the held state would miss the click entirely.
+      if (event.button === 0) {
+        this.state.primary = true;
+        this.state.primaryPressed = true;
+      }
+      if (event.button === 2) {
+        this.state.secondary = true;
+        this.state.secondaryPressed = true;
+      }
     };
     const up = (event: MouseEvent) => {
       if (event.button === 0) this.state.primary = false;
@@ -260,8 +269,10 @@ export class Controls {
 
     if (move.lengthSq() > 1) move.normalize();
 
-    this.state.primaryPressed = this.state.primaryPressed || (this.state.primary && !this.primaryWasDown);
-    this.state.secondaryPressed = this.state.secondary && !this.secondaryWasDown;
+    // Latched by the event handlers above; this also catches a press that
+    // began while the window was unfocused, and gamepad buttons.
+    this.state.primaryPressed ||= this.state.primary && !this.primaryWasDown;
+    this.state.secondaryPressed ||= this.state.secondary && !this.secondaryWasDown;
     this.primaryWasDown = this.state.primary;
     this.secondaryWasDown = this.state.secondary;
 

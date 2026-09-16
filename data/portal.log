@@ -1,9 +1,3 @@
 [portal] found 2 place(s) in /home/user/miblox/places
 [portal] listening on http://localhost:3000
 [portal] no Migood credentials configured, so everyone plays as a guest
-[manager] launching Lobby as server d9f86b5f on port 7100
-[d9f86b5f] started: Lobby at 30Hz, client ownership enabled
-[manager] server d9f86b5f ready on port 7100
-[d9f86b5f] Guest joined (1/40)
-[d9f86b5f] print: Guest arrived in the lobby
-[d9f86b5f] Guest left (0/40)

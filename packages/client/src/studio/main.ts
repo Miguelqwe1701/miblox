@@ -422,6 +422,9 @@ class Studio {
     this.test.start();
 
     await this.viewport.setGame(this.test.game, WASM_URL);
+    // The startup scripts have already run and may have reshaped the ground,
+    // so mesh once more now rather than showing the world as it was before.
+    this.viewport.rebuildTerrain();
     if (mode === "play") {
       this.viewport.follow = () => this.test?.root?.CFrame.position ?? null;
       this.viewport.tool = "select";

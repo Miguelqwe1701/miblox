@@ -54,6 +54,8 @@ export class Connection {
   private seq = 0;
   private pingTimer: ReturnType<typeof setInterval> | null = null;
   private queued: ClientMessage[] = [];
+  /** Set when we closed the socket ourselves, so it is not reported as a fault. */
+  private closingDeliberately = false;
 
   constructor(
     private readonly info: ConnectionInfo,
@@ -93,14 +95,20 @@ export class Connection {
 
     socket.addEventListener("close", (event) => {
       this.stopPinging();
+      // Leaving a world closes the socket on purpose; telling the player their
+      // connection dropped, and tearing down the world they just joined, is
+      // exactly wrong.
+      if (this.closingDeliberately) return;
       this.setState("closed", event.reason || "Connection closed");
     });
     socket.addEventListener("error", () => {
+      if (this.closingDeliberately) return;
       this.setState("error", "Could not reach the game server");
     });
   }
 
   disconnect(): void {
+    this.closingDeliberately = true;
     this.stopPinging();
     this.socket?.close();
     this.socket = null;

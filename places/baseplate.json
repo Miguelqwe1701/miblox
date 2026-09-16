@@ -27,7 +27,7 @@
           "props": {
             "CFrame": [
               0,
-              14,
+              16,
               0,
               1,
               0,
@@ -75,7 +75,7 @@
           "props": {
             "CFrame": [
               0,
-              16.5,
+              18.5,
               0,
               1,
               0,
@@ -125,7 +125,7 @@
           "props": {
             "CFrame": [
               -40,
-              17,
+              19,
               -24,
               1,
               0,
@@ -173,7 +173,7 @@
           "props": {
             "CFrame": [
               -40,
-              19,
+              21,
               -30,
               1,
               0,
@@ -221,7 +221,7 @@
           "props": {
             "CFrame": [
               -40,
-              21,
+              23,
               -36,
               1,
               0,
@@ -269,7 +269,7 @@
           "props": {
             "CFrame": [
               -40,
-              23,
+              25,
               -42,
               1,
               0,
@@ -317,7 +317,7 @@
           "props": {
             "CFrame": [
               -40,
-              25,
+              27,
               -48,
               1,
               0,
@@ -365,7 +365,7 @@
           "props": {
             "CFrame": [
               -40,
-              27,
+              29,
               -54,
               1,
               0,
@@ -413,7 +413,7 @@
           "props": {
             "CFrame": [
               -40,
-              29,
+              31,
               -60,
               1,
               0,
@@ -461,7 +461,7 @@
           "props": {
             "CFrame": [
               -40,
-              31,
+              33,
               -66,
               1,
               0,
@@ -570,7 +570,7 @@
           "className": "Script",
           "name": "Main",
           "props": {
-            "Source": "--!strict\n-- Runs on the server. This file is the tour of the API.\n\nlocal Players = game:GetService(\"Players\")\nlocal ReplicatedStorage = game:GetService(\"ReplicatedStorage\")\nlocal Terrain = workspace.Terrain\n\nprint(\"MiBlox starter place is running\")\n\n-- Clear the natural hillside out of the spawn area first. The world is\n-- generated from a seed, so the ground here can easily be higher than the\n-- baseplate; without this the spawn pad ends up buried inside a hill.\nTerrain:FillBlock(Vector3.new(0, 96, 0), Vector3.new(220, 160, 220), Enum.TerrainMaterial.Air)\n\n-- Then lay a flat plateau underneath it. FillBlock takes a centre and a size,\n-- so this fills y = 0..12 and leaves the baseplate sitting proud of the grass\n-- instead of fighting with it for the same surface.\nTerrain:FillBlock(Vector3.new(0, 6, 0), Vector3.new(220, 12, 220), Enum.Material.Grass)\n\n-- A tower of parts, to show physics and replication doing something visible.\nlocal function buildTower(origin: Vector3, height: number)\n\tlocal tower = Instance.new(\"Model\")\n\ttower.Name = \"Tower\"\n\ttower.Parent = workspace\n\n\tfor i = 1, height do\n\t\tlocal block = Instance.new(\"Part\")\n\t\tblock.Name = \"Block\" .. i\n\t\tblock.Size = Vector3.new(6, 3, 6)\n\t\tblock.CFrame = CFrame.new(origin + Vector3.new(0, i * 3, 0))\n\t\tblock.Color = Color3.fromRGB(80 + i * 12, 120, 200 - i * 10)\n\t\tblock.Material = Enum.Material.Concrete\n\t\tblock.Anchored = true\n\t\tblock.Parent = tower\n\tend\n\treturn tower\nend\n\nbuildTower(Vector3.new(40, 30, 0), 8)\n\n-- Greet each player and drop a welcome gift they can knock over.\nPlayers.PlayerAdded:Connect(function(player)\n\tprint(player.Name .. \" joined\")\n\n\tplayer.CharacterAdded:Connect(function(character)\n\t\tlocal humanoid = character:WaitForChild(\"Humanoid\")\n\t\thumanoid.WalkSpeed = 18\n\n\t\tlocal gift = Instance.new(\"Part\")\n\t\tgift.Name = \"Welcome\"\n\t\tgift.Size = Vector3.new(4, 4, 4)\n\t\tgift.Color = Color3.fromRGB(255, 190, 60)\n\t\tgift.Material = Enum.Material.Wood\n\t\tgift.CFrame = character:WaitForChild(\"HumanoidRootPart\").CFrame + Vector3.new(0, 24, 0)\n\t\tgift.Parent = workspace\n\n\t\thumanoid.Died:Connect(function()\n\t\t\tprint(player.Name .. \" died; respawning\")\n\t\t\ttask.wait(Players.RespawnTime)\n\t\t\tplayer:LoadCharacter()\n\t\tend)\n\tend)\nend)\n\n-- A remote the client can call. The server decides what actually happens.\nlocal paintEvent = Instance.new(\"RemoteEvent\")\npaintEvent.Name = \"Paint\"\npaintEvent.Parent = ReplicatedStorage\n\npaintEvent.OnServerEvent:Connect(function(player, position, material)\n\tif typeof(position) ~= \"Vector3\" then return end\n\t-- Never trust a client about distance: check it here.\n\tlocal character = player.Character\n\tlocal root = character and character:FindFirstChild(\"HumanoidRootPart\")\n\tif not root then return end\n\tif (root.CFrame.Position - position).Magnitude > 200 then return end\n\n\tTerrain:FillBall(position, 8, material or Enum.Material.Rock)\nend)\n\n-- A day/night cycle, showing a loop that yields instead of blocking.\n-- A full day takes forty minutes: fast enough to notice, slow enough that a\n-- short session is not plunged into darkness halfway through.\ntask.spawn(function()\n\tlocal Lighting = game:GetService(\"Lighting\")\n\twhile true do\n\t\tLighting.ClockTime = (Lighting.ClockTime + 0.02) % 24\n\t\ttask.wait(2)\n\tend\nend)\n",
+            "Source": "--!strict\n-- Runs on the server. This file is the tour of the API.\n\nlocal Players = game:GetService(\"Players\")\nlocal ReplicatedStorage = game:GetService(\"ReplicatedStorage\")\nlocal Terrain = workspace.Terrain\n\nprint(\"MiBlox starter place is running\")\n\n-- Clear the natural hillside out of the spawn area first. The world is\n-- generated from a seed, so the ground here can easily be higher than the\n-- baseplate; without this the spawn pad ends up buried inside a hill.\nTerrain:FillBlock(Vector3.new(0, 96, 0), Vector3.new(220, 160, 220), Enum.TerrainMaterial.Air)\n\n-- Then lay a flat plateau underneath it. FillBlock takes a centre and a size,\n-- so this fills y = 4..14, stopping below the baseplate. Sharing a surface\n-- with it would leave the two z-fighting across the whole plateau.\nTerrain:FillBlock(Vector3.new(0, 9, 0), Vector3.new(220, 10, 220), Enum.Material.Grass)\n\n-- A tower of parts, to show physics and replication doing something visible.\nlocal function buildTower(origin: Vector3, height: number)\n\tlocal tower = Instance.new(\"Model\")\n\ttower.Name = \"Tower\"\n\ttower.Parent = workspace\n\n\tfor i = 1, height do\n\t\tlocal block = Instance.new(\"Part\")\n\t\tblock.Name = \"Block\" .. i\n\t\tblock.Size = Vector3.new(6, 3, 6)\n\t\tblock.CFrame = CFrame.new(origin + Vector3.new(0, i * 3, 0))\n\t\tblock.Color = Color3.fromRGB(80 + i * 12, 120, 200 - i * 10)\n\t\tblock.Material = Enum.Material.Concrete\n\t\tblock.Anchored = true\n\t\tblock.Parent = tower\n\tend\n\treturn tower\nend\n\nbuildTower(Vector3.new(40, 30, 0), 8)\n\n-- Greet each player and drop a welcome gift they can knock over.\nPlayers.PlayerAdded:Connect(function(player)\n\tprint(player.Name .. \" joined\")\n\n\tplayer.CharacterAdded:Connect(function(character)\n\t\tlocal humanoid = character:WaitForChild(\"Humanoid\")\n\t\thumanoid.WalkSpeed = 18\n\n\t\tlocal gift = Instance.new(\"Part\")\n\t\tgift.Name = \"Welcome\"\n\t\tgift.Size = Vector3.new(4, 4, 4)\n\t\tgift.Color = Color3.fromRGB(255, 190, 60)\n\t\tgift.Material = Enum.Material.Wood\n\t\tgift.CFrame = character:WaitForChild(\"HumanoidRootPart\").CFrame + Vector3.new(0, 24, 0)\n\t\tgift.Parent = workspace\n\n\t\thumanoid.Died:Connect(function()\n\t\t\tprint(player.Name .. \" died; respawning\")\n\t\t\ttask.wait(Players.RespawnTime)\n\t\t\tplayer:LoadCharacter()\n\t\tend)\n\tend)\nend)\n\n-- A remote the client can call. The server decides what actually happens.\nlocal paintEvent = Instance.new(\"RemoteEvent\")\npaintEvent.Name = \"Paint\"\npaintEvent.Parent = ReplicatedStorage\n\npaintEvent.OnServerEvent:Connect(function(player, position, material)\n\tif typeof(position) ~= \"Vector3\" then return end\n\t-- Never trust a client about distance: check it here.\n\tlocal character = player.Character\n\tlocal root = character and character:FindFirstChild(\"HumanoidRootPart\")\n\tif not root then return end\n\tif (root.CFrame.Position - position).Magnitude > 200 then return end\n\n\tTerrain:FillBall(position, 8, material or Enum.Material.Rock)\nend)\n\n-- A day/night cycle, showing a loop that yields instead of blocking.\n-- A full day takes forty minutes: fast enough to notice, slow enough that a\n-- short session is not plunged into darkness halfway through.\ntask.spawn(function()\n\tlocal Lighting = game:GetService(\"Lighting\")\n\twhile true do\n\t\tLighting.ClockTime = (Lighting.ClockTime + 0.02) % 24\n\t\ttask.wait(2)\n\tend\nend)\n",
             "Enabled": true,
             "RunContext": "Legacy"
           }

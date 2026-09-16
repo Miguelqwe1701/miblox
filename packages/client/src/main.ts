@@ -371,7 +371,7 @@ class MibloxClient {
   private async switchWorld(gameId: string): Promise<void> {
     if (this.joining) return;
     this.joining = true;
-    this.leave();
+    this.leave(false);
     await this.play(gameId);
     this.joining = false;
   }
@@ -401,7 +401,13 @@ class MibloxClient {
     }
   }
 
-  private leave(): void {
+  /**
+   * Leaves the current world.
+   *
+   * `toMenu` is false when switching worlds: reloading the catalogue would
+   * race the new connection and flash the menu over the loading screen.
+   */
+  private leave(toMenu = true): void {
     this.connection?.disconnect();
     this.connection = null;
     this.snapped = false;
@@ -427,7 +433,7 @@ class MibloxClient {
     this.clientScripts?.vm.scheduler.clear();
     this.clientScripts = null;
     this.simulation = null;
-    void this.loadGames();
+    if (toMenu) void this.loadGames();
   }
 
   private onDelta(): void {

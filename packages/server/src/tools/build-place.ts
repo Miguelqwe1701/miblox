@@ -33,9 +33,9 @@ print("MiBlox starter place is running")
 Terrain:FillBlock(Vector3.new(0, 96, 0), Vector3.new(220, 160, 220), Enum.TerrainMaterial.Air)
 
 -- Then lay a flat plateau underneath it. FillBlock takes a centre and a size,
--- so this fills y = 0..12 and leaves the baseplate sitting proud of the grass
--- instead of fighting with it for the same surface.
-Terrain:FillBlock(Vector3.new(0, 6, 0), Vector3.new(220, 12, 220), Enum.Material.Grass)
+-- so this fills y = 4..14, stopping below the baseplate. Sharing a surface
+-- with it would leave the two z-fighting across the whole plateau.
+Terrain:FillBlock(Vector3.new(0, 9, 0), Vector3.new(220, 10, 220), Enum.Material.Grass)
 
 -- A tower of parts, to show physics and replication doing something visible.
 local function buildTower(origin: Vector3, height: number)
@@ -164,7 +164,7 @@ export function buildStarterPlace(): SerializedPlace {
   baseplate.Name = "Baseplate";
   Object.assign(baseplate, {
     Size: new Vector3(160, 4, 160),
-    CFrame: CFrame.fromPosition(new Vector3(0, 14, 0)),
+    CFrame: CFrame.fromPosition(new Vector3(0, 16, 0)),
     Color: Color3.fromRGB(96, 106, 118),
     Material: "Slate",
     Anchored: true,
@@ -174,7 +174,7 @@ export function buildStarterPlace(): SerializedPlace {
   spawn.Name = "SpawnLocation";
   Object.assign(spawn, {
     Size: new Vector3(24, 1, 24),
-    CFrame: CFrame.fromPosition(new Vector3(0, 16.5, 0)),
+    CFrame: CFrame.fromPosition(new Vector3(0, 18.5, 0)),
     Color: Color3.fromRGB(70, 160, 90),
     Material: "Concrete",
     Anchored: true,
@@ -186,7 +186,7 @@ export function buildStarterPlace(): SerializedPlace {
     step.Name = `Step${i + 1}`;
     Object.assign(step, {
       Size: new Vector3(12, 2, 6),
-      CFrame: CFrame.fromPosition(new Vector3(-40, 17 + i * 2, -24 - i * 6)),
+      CFrame: CFrame.fromPosition(new Vector3(-40, 19 + i * 2, -24 - i * 6)),
       Color: Color3.fromRGB(150, 120, 90),
       Material: "Wood",
       Anchored: true,
