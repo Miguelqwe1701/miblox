@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Builds every package, including compiling the mesher to WebAssembly
+      # with AssemblyScript. The client's tests import the built output, so
+      # this has to come first.
+      - name: Build
+        run: npm run build
+
+      # The client is bundled by Vite, which strips types without checking
+      # them, so its type errors only surface here.
+      - name: Typecheck the client
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
