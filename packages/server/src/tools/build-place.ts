@@ -221,12 +221,157 @@ export function buildStarterPlace(): SerializedPlace {
   };
 }
 
+const LOBBY_SCRIPT = `--!strict
+-- The lobby.
+--
+-- A real place that players join, exactly like any other world. The game
+-- picker itself is drawn by the client, so it can list whatever is published
+-- without the lobby needing to be rebuilt.
+
+local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
+
+Lighting.ClockTime = 15.5
+
+Players.PlayerAdded:Connect(function(player)
+	print(player.Name .. " arrived in the lobby")
+end)
+
+-- A slowly turning ring overhead, so the room is not completely static.
+local ring = workspace:FindFirstChild("Ring")
+if ring then
+	task.spawn(function()
+		local angle = 0
+		while true do
+			angle += 0.02
+			ring.CFrame = CFrame.new(ring.CFrame.Position) * CFrame.Angles(0, angle, 0)
+			task.wait(0.05)
+		end
+	end)
+end
+`;
+
+/**
+ * Builds the lobby.
+ *
+ * A hub world players join like any other place, so arriving in VR does not
+ * mean taking the headset off to pick something: the client draws the game
+ * list into this room as panels you can point at.
+ */
+export function buildLobbyPlace(): SerializedPlace {
+  const game = new DataModel();
+  const workspace = game.Workspace;
+
+  // No procedural terrain: the lobby is a built room floating in the sky.
+  game.Terrain.voxels.gen = {
+    seed: 1,
+    seaLevel: -4096,
+    amplitude: 1,
+    scale: 256,
+    caves: false,
+  };
+
+  const floor = createInstance("Part", workspace);
+  floor.Name = "Floor";
+  Object.assign(floor, {
+    Size: new Vector3(180, 4, 180),
+    CFrame: CFrame.fromPosition(new Vector3(0, 0, 0)),
+    Color: Color3.fromRGB(38, 46, 62),
+    Material: "Slate",
+    Anchored: true,
+  });
+
+  const inlay = createInstance("Part", workspace);
+  inlay.Name = "Inlay";
+  Object.assign(inlay, {
+    Size: new Vector3(96, 0.4, 96),
+    CFrame: CFrame.fromPosition(new Vector3(0, 2.1, 0)),
+    Color: Color3.fromRGB(90, 169, 255),
+    Material: "Neon",
+    Anchored: true,
+    Transparency: 0.35,
+  });
+
+  const spawn = createInstance("SpawnLocation", workspace);
+  spawn.Name = "SpawnLocation";
+  Object.assign(spawn, {
+    Size: new Vector3(16, 1, 16),
+    CFrame: CFrame.fromPosition(new Vector3(0, 2.5, 30)),
+    Color: Color3.fromRGB(70, 160, 90),
+    Material: "Concrete",
+    Anchored: true,
+  });
+
+  // Pillars around the edge, to give the room a sense of scale.
+  for (let i = 0; i < 10; i++) {
+    const angle = (i / 10) * Math.PI * 2;
+    const pillar = createInstance("Part", workspace);
+    pillar.Name = `Pillar${i + 1}`;
+    Object.assign(pillar, {
+      Size: new Vector3(5, 34, 5),
+      CFrame: CFrame.fromPosition(
+        new Vector3(Math.cos(angle) * 74, 19, Math.sin(angle) * 74),
+      ),
+      Color: Color3.fromRGB(52, 62, 82),
+      Material: "Concrete",
+      Anchored: true,
+    });
+
+    const lamp = createInstance("Part", workspace);
+    lamp.Name = `Lamp${i + 1}`;
+    Object.assign(lamp, {
+      Size: new Vector3(5.6, 1.2, 5.6),
+      CFrame: CFrame.fromPosition(
+        new Vector3(Math.cos(angle) * 74, 36.4, Math.sin(angle) * 74),
+      ),
+      Color: Color3.fromRGB(140, 200, 255),
+      Material: "Neon",
+      Anchored: true,
+    });
+  }
+
+  const ring = createInstance("MeshPart", workspace);
+  ring.Name = "Ring";
+  Object.assign(ring, {
+    MeshId: "builtin:torus",
+    Size: new Vector3(46, 46, 46),
+    CFrame: CFrame.fromPosition(new Vector3(0, 44, 0)),
+    Color: Color3.fromRGB(120, 180, 255),
+    Material: "Neon",
+    Anchored: true,
+    Transparency: 0.25,
+  });
+
+  const lobbyScript = createInstance("Script", game.GetService("ServerScriptService"));
+  lobbyScript.Name = "Lobby";
+  (lobbyScript as unknown as { Source: string }).Source = LOBBY_SCRIPT;
+
+  const place = serializePlace(game, "Lobby");
+  return {
+    ...place,
+    ...({
+      description: "The hub. Pick a world from here, in the browser or in VR.",
+      maxPlayers: 40,
+      serverAuthoritative: false,
+      tickRate: 30,
+      isLobby: true,
+    } as Partial<SerializedPlace>),
+  };
+}
+
 async function main(): Promise<void> {
-  const out = resolve(process.argv[2] ?? "places/baseplate.json");
-  const place = buildStarterPlace();
-  await mkdir(dirname(out), { recursive: true });
-  await writeFile(out, JSON.stringify(place, null, 2), "utf8");
-  console.log(`wrote ${out}`);
+  const dir = resolve(process.argv[2] ?? "places");
+  await mkdir(dir, { recursive: true });
+
+  const outputs: Array<[string, SerializedPlace]> = [
+    ["lobby.json", buildLobbyPlace()],
+    ["baseplate.json", buildStarterPlace()],
+  ];
+  for (const [name, place] of outputs) {
+    const target = resolve(dir, name);
+    await writeFile(target, JSON.stringify(place, null, 2), "utf8");
+    console.log(`wrote ${target}`);
+  }
 }
 
 // Only run when invoked directly, so tests can import buildStarterPlace.

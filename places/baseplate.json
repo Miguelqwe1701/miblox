@@ -12,7 +12,7 @@
   },
   "services": [
     {
-      "id": "i2",
+      "id": "i18",
       "className": "Workspace",
       "name": "Workspace",
       "props": {
@@ -21,7 +21,7 @@
       },
       "children": [
         {
-          "id": "ii",
+          "id": "i1o",
           "className": "Part",
           "name": "Baseplate",
           "props": {
@@ -69,7 +69,7 @@
           }
         },
         {
-          "id": "ij",
+          "id": "i1p",
           "className": "SpawnLocation",
           "name": "SpawnLocation",
           "props": {
@@ -119,7 +119,7 @@
           }
         },
         {
-          "id": "ik",
+          "id": "i1q",
           "className": "Part",
           "name": "Step1",
           "props": {
@@ -167,7 +167,7 @@
           }
         },
         {
-          "id": "il",
+          "id": "i1r",
           "className": "Part",
           "name": "Step2",
           "props": {
@@ -215,7 +215,7 @@
           }
         },
         {
-          "id": "im",
+          "id": "i1s",
           "className": "Part",
           "name": "Step3",
           "props": {
@@ -263,7 +263,7 @@
           }
         },
         {
-          "id": "in",
+          "id": "i1t",
           "className": "Part",
           "name": "Step4",
           "props": {
@@ -311,7 +311,7 @@
           }
         },
         {
-          "id": "io",
+          "id": "i1u",
           "className": "Part",
           "name": "Step5",
           "props": {
@@ -359,7 +359,7 @@
           }
         },
         {
-          "id": "ip",
+          "id": "i1v",
           "className": "Part",
           "name": "Step6",
           "props": {
@@ -407,7 +407,7 @@
           }
         },
         {
-          "id": "iq",
+          "id": "i1w",
           "className": "Part",
           "name": "Step7",
           "props": {
@@ -455,7 +455,7 @@
           }
         },
         {
-          "id": "ir",
+          "id": "i1x",
           "className": "Part",
           "name": "Step8",
           "props": {
@@ -505,7 +505,7 @@
       ]
     },
     {
-      "id": "i3",
+      "id": "i19",
       "className": "Players",
       "name": "Players",
       "props": {
@@ -515,7 +515,7 @@
       }
     },
     {
-      "id": "i4",
+      "id": "i1a",
       "className": "Lighting",
       "name": "Lighting",
       "props": {
@@ -530,13 +530,13 @@
       }
     },
     {
-      "id": "i5",
+      "id": "i1b",
       "className": "ReplicatedStorage",
       "name": "ReplicatedStorage",
       "props": {},
       "children": [
         {
-          "id": "iu",
+          "id": "i20",
           "className": "ModuleScript",
           "name": "Settings",
           "props": {
@@ -548,25 +548,25 @@
       ]
     },
     {
-      "id": "i6",
+      "id": "i1c",
       "className": "ReplicatedFirst",
       "name": "ReplicatedFirst",
       "props": {}
     },
     {
-      "id": "i7",
+      "id": "i1d",
       "className": "ServerStorage",
       "name": "ServerStorage",
       "props": {}
     },
     {
-      "id": "i8",
+      "id": "i1e",
       "className": "ServerScriptService",
       "name": "ServerScriptService",
       "props": {},
       "children": [
         {
-          "id": "is",
+          "id": "i1y",
           "className": "Script",
           "name": "Main",
           "props": {
@@ -578,19 +578,19 @@
       ]
     },
     {
-      "id": "i9",
+      "id": "i1f",
       "className": "StarterPlayer",
       "name": "StarterPlayer",
       "props": {},
       "children": [
         {
-          "id": "ie",
+          "id": "i1k",
           "className": "StarterPlayerScripts",
           "name": "StarterPlayerScripts",
           "props": {},
           "children": [
             {
-              "id": "it",
+              "id": "i1z",
               "className": "LocalScript",
               "name": "ClientMain",
               "props": {
@@ -602,7 +602,7 @@
           ]
         },
         {
-          "id": "if",
+          "id": "i1l",
           "className": "StarterCharacterScripts",
           "name": "StarterCharacterScripts",
           "props": {}
@@ -610,25 +610,25 @@
       ]
     },
     {
-      "id": "ia",
+      "id": "i1g",
       "className": "StarterGui",
       "name": "StarterGui",
       "props": {}
     },
     {
-      "id": "ib",
+      "id": "i1h",
       "className": "StarterPack",
       "name": "StarterPack",
       "props": {}
     },
     {
-      "id": "ic",
+      "id": "i1i",
       "className": "SoundService",
       "name": "SoundService",
       "props": {}
     },
     {
-      "id": "id",
+      "id": "i1j",
       "className": "Teams",
       "name": "Teams",
       "props": {}

@@ -16,6 +16,7 @@ import { CameraRig } from "./camera-rig.js";
 import { ClientSimulation } from "./client-sim.js";
 import { VRSupport } from "./vr.js";
 import { Hud, type AccountSummary, type GameSummary } from "./hud.js";
+import { LobbyKiosks } from "./lobby.js";
 import { HOTBAR } from "./hotbar.js";
 import { loadSettings, saveSettings, type Settings } from "./settings.js";
 import "./style.css";
@@ -43,6 +44,11 @@ class MibloxClient {
   private settings: Settings = loadSettings();
   private currentGameId: string | null = null;
   private playerListShown = false;
+  private games: GameSummary[] = [];
+  private kiosks: LobbyKiosks | null = null;
+  private aimedAt: { gameId: string; name: string } | null = null;
+  private lobbyHint: HTMLDivElement | null = null;
+  private joining = false;
 
   constructor(private readonly container: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
@@ -77,6 +83,8 @@ class MibloxClient {
         onOpenStudio: (gameId) => {
           window.location.href = `/studio/${gameId}`;
         },
+        onEnterLobby: () => void this.play("lobby"),
+        onEnterVr: () => void this.enterVr(),
       },
       this.settings,
     );
@@ -171,9 +179,43 @@ class MibloxClient {
     }
   }
 
+  /**
+   * Sets up WebXR and reports whether a headset is present.
+   *
+   * Done once at boot rather than on joining a world, so the menu can offer
+   * VR up front: on desktop that means being asked on launch instead of
+   * discovering the option after picking a game.
+   */
+  private async setUpVr(): Promise<void> {
+    this.vr = new VRSupport(this.renderer, this.controls, this.scene);
+    const available = await this.vr.init();
+    this.hud.setVrAvailable(available, () => void this.enterVr());
+
+    if (!available) return;
+    // The desktop shell has no address bar to fall back on, so it asks.
+    const isDesktopApp = Boolean((window as { miblox?: { isDesktopApp?: boolean } }).miblox?.isDesktopApp);
+    if (this.settings.askForVr && isDesktopApp) this.hud.showVrPrompt();
+  }
+
+  /** Enters VR, heading for the lobby first if we are not in a world yet. */
+  private async enterVr(): Promise<void> {
+    if (!this.vr?.available) {
+      this.hud.toast("No VR headset was detected in this browser");
+      return;
+    }
+    try {
+      if (!this.connection) await this.play("lobby");
+      await this.vr.enter();
+    } catch (err) {
+      this.hud.toast(String((err as Error).message ?? err));
+    }
+  }
+
   async boot(): Promise<void> {
     await this.loadAccount();
     await this.loadGames();
+    await this.setUpVr();
+    if (this.settings.autoLobby) void this.play("lobby");
     // One render loop for the whole session; it idles until a game is joined.
     this.renderer.setAnimationLoop(() => this.frame());
   }
@@ -193,7 +235,9 @@ class MibloxClient {
     try {
       const res = await fetch("/api/games");
       const body = (await res.json()) as { games: GameSummary[] };
-      this.hud.showMenu(body.games);
+      this.games = body.games;
+      // The lobby is the way in, not an entry in the list of destinations.
+      this.hud.showMenu(body.games.filter((game) => game.id !== "lobby"));
     } catch {
       this.hud.showMenu([]);
       this.hud.toast("Could not reach the portal");
@@ -293,16 +337,43 @@ class MibloxClient {
     this.camera.camera.fov = this.settings.fieldOfView;
     this.camera.camera.updateProjectionMatrix();
 
-    this.vr = new VRSupport(this.renderer, this.controls, this.scene);
-    const vrAvailable = await this.vr.init();
-    this.hud.setVrAvailable(vrAvailable, () => {
-      void this.vr?.enter().catch((err) => this.hud.toast(String(err.message ?? err)));
-    });
+    if (this.currentGameId === "lobby") this.setUpLobby();
 
     this.hud.setPlaceName(connection.placeName);
-    this.hud.enterGame(detectPlatform());
+    this.hud.enterGame(detectPlatform(), { building: this.currentGameId !== "lobby" });
     this.hud.addSystemChat(`Welcome to ${connection.placeName}. Press Esc for the menu.`);
     this.startClientScripts();
+  }
+
+  /**
+   * Draws the catalogue into the lobby as panels you can point at.
+   *
+   * Local decoration rather than replicated instances: the list of worlds
+   * changes as things are published, and nobody should have to rebuild the
+   * lobby place for that.
+   */
+  private setUpLobby(): void {
+    this.kiosks = new LobbyKiosks((selection) => {
+      if (this.joining) return;
+      this.hud.toast(`Joining ${selection.name}…`);
+      void this.switchWorld(selection.gameId);
+    });
+    this.kiosks.build(this.games);
+    this.scene.add(this.kiosks.group);
+
+    this.lobbyHint = document.createElement("div");
+    this.lobbyHint.className = "lobby-hint";
+    this.lobbyHint.hidden = true;
+    this.hud.root.appendChild(this.lobbyHint);
+  }
+
+  /** Leaves the current world and joins another, keeping any VR session. */
+  private async switchWorld(gameId: string): Promise<void> {
+    if (this.joining) return;
+    this.joining = true;
+    this.leave();
+    await this.play(gameId);
+    this.joining = false;
   }
 
   /**
@@ -336,6 +407,13 @@ class MibloxClient {
     this.snapped = false;
     this.pendingChunks.clear();
     this.currentGameId = null;
+    if (this.kiosks) {
+      this.scene.remove(this.kiosks.group);
+      this.kiosks.clear();
+      this.kiosks = null;
+    }
+    this.lobbyHint?.remove();
+    this.lobbyHint = null;
     if (this.terrainView) {
       this.scene.remove(this.terrainView.group);
       this.terrainView.dispose();
@@ -391,9 +469,19 @@ class MibloxClient {
     this.simulation.step(dt, moveWorld, input.jump);
     this.clientScripts?.step(dt);
 
-    // Left click uses the held slot; right click always digs.
-    if (input.primaryPressed) this.build(this.hud.slot.material);
-    if (input.secondaryPressed) this.build(0);
+    if (this.kiosks) {
+      this.updateLobbyAim();
+      // In the lobby, the primary action picks a world rather than building.
+      if (input.primaryPressed && this.kiosks.select()) {
+        this.controls.endFrame();
+        return;
+      }
+      this.kiosks.update(dt);
+    } else {
+      // Left click uses the held slot; right click always digs.
+      if (input.primaryPressed) this.build(this.hud.slot.material);
+      if (input.secondaryPressed) this.build(0);
+    }
 
     this.camera.update(input, this.simulation.root, dt);
     this.worldView.update(dt);
@@ -415,6 +503,37 @@ class MibloxClient {
     this.controls.endFrame();
 
     this.renderer.render(this.scene, this.camera.camera);
+  }
+
+  /**
+   * Points at lobby panels.
+   *
+   * In VR the ray comes from the controller; otherwise from the camera. Both
+   * go through the same call, so the two feel the same and there is one path
+   * to keep working.
+   */
+  private updateLobbyAim(): void {
+    const kiosks = this.kiosks;
+    const camera = this.camera;
+    if (!kiosks || !camera) return;
+
+    let origin = camera.camera.position.clone();
+    const direction = new THREE.Vector3();
+    const controller = this.vr?.active ? this.vr.controllers[1] ?? this.vr.controllers[0] : null;
+    if (controller) {
+      controller.getWorldPosition(origin);
+      controller.getWorldDirection(direction);
+      // A controller's ray points along its negative Z.
+      direction.negate();
+    } else {
+      camera.camera.getWorldDirection(direction);
+    }
+
+    this.aimedAt = kiosks.aim(origin, direction);
+    if (this.lobbyHint) {
+      this.lobbyHint.hidden = !this.aimedAt;
+      if (this.aimedAt) this.lobbyHint.textContent = `Play ${this.aimedAt.name}`;
+    }
   }
 
   /** Digs or places terrain where the player is looking. */

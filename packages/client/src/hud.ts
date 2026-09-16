@@ -28,6 +28,8 @@ export interface HudHandlers {
   onJump(): void;
   onAction(): void;
   onOpenStudio(gameId: string): void;
+  onEnterLobby(): void;
+  onEnterVr(): void;
 }
 
 type Screen = "menu" | "loading" | "game";
@@ -132,9 +134,13 @@ export class Hud {
     this.el(".loading-detail").textContent = detail;
   }
 
-  enterGame(platform: Platform): void {
+  enterGame(platform: Platform, options: { building?: boolean } = {}): void {
     this.show("game");
     this.el(".touch").hidden = platform !== "Mobile";
+    // A hub has nothing to build or dig, so it shows neither hotbar nor health.
+    const building = options.building ?? true;
+    this.el(".hotbar").hidden = !building;
+    this.el(".health").hidden = !building;
   }
 
   setAccount(account: AccountSummary | null): void {
@@ -147,6 +153,20 @@ export class Hud {
   // -- main menu -----------------------------------------------------------
 
   private bindMenu(): void {
+    this.el<HTMLButtonElement>(".enter-lobby").addEventListener("click", () =>
+      this.handlers.onEnterLobby(),
+    );
+    this.el<HTMLButtonElement>(".enter-vr").addEventListener("click", () =>
+      this.handlers.onEnterVr(),
+    );
+    this.el<HTMLButtonElement>(".settings-vr").addEventListener("click", () =>
+      this.handlers.onEnterVr(),
+    );
+    this.el<HTMLButtonElement>(".vr-yes").addEventListener("click", () => {
+      this.dismissVrPrompt();
+      this.handlers.onEnterVr();
+    });
+    this.el<HTMLButtonElement>(".vr-no").addEventListener("click", () => this.dismissVrPrompt());
     this.el<HTMLButtonElement>(".sign-in").addEventListener("click", () => this.handlers.onSignIn());
     this.el<HTMLButtonElement>(".rename").addEventListener("click", async () => {
       const next = window.prompt("Choose a username (3-20 letters, numbers or underscores)");
@@ -218,6 +238,7 @@ export class Hud {
     };
     bindToggle(".set-shadows", "shadows");
     bindToggle(".set-invert", "invertY");
+    bindToggle(".set-askvr", "askForVr");
 
     const style = this.el<HTMLSelectElement>(".set-terrain");
     style.value = settings.terrainStyle;
@@ -356,6 +377,27 @@ export class Hud {
     const button = this.el<HTMLButtonElement>(".vr-button");
     button.hidden = !available;
     button.onclick = onEnter;
+
+    // The same capability shows up in three places: the menu, the pause
+    // settings, and the in-game button.
+    this.el<HTMLButtonElement>(".enter-vr").hidden = !available;
+    this.el<HTMLButtonElement>(".settings-vr").disabled = !available;
+    this.el(".vr-state").textContent = available
+      ? "Headset ready"
+      : "No headset detected in this browser";
+  }
+
+  /** Offers VR once, when a headset is present and the player has not opted out. */
+  showVrPrompt(): void {
+    this.el(".vr-prompt").hidden = false;
+  }
+
+  /** Returns true if the player ticked "do not ask again". */
+  private dismissVrPrompt(): boolean {
+    const never = this.el<HTMLInputElement>(".vr-dont-ask").checked;
+    this.el(".vr-prompt").hidden = true;
+    if (never) this.handlers.onSettingChange("askForVr", false as never);
+    return never;
   }
 
   toggleStats(): boolean {
@@ -418,6 +460,21 @@ const TEMPLATE = `
       </div>
     </header>
     <p class="tagline">Build it, script it, play it. Browser, desktop, phone and VR.</p>
+
+    <div class="hero">
+      <div class="hero-text">
+        <h2>Start in the Lobby</h2>
+        <p>
+          A world you join like any other, with every game on a panel you can
+          walk up to. In VR you never take the headset off to pick one.
+        </p>
+      </div>
+      <div class="hero-actions">
+        <button class="primary enter-lobby">Enter the Lobby</button>
+        <button class="ghost enter-vr" hidden>Connect to VR</button>
+      </div>
+    </div>
+
     <h2 class="section-title">Worlds</h2>
     <div class="game-list"></div>
   </div>
@@ -505,11 +562,34 @@ const TEMPLATE = `
           <span>Invert look</span>
           <input class="set-invert" type="checkbox" />
         </label>
+        <div class="row vr-row">
+          <span>VR</span>
+          <div class="vr-controls">
+            <button class="ghost settings-vr">Connect to VR</button>
+            <span class="vr-state">Checking…</span>
+          </div>
+        </div>
+        <label class="row toggle">
+          <span>Ask about VR</span>
+          <input class="set-askvr" type="checkbox" />
+        </label>
         <button class="primary close-settings">Done</button>
       </div>
     </div>
   </div>
 </section>
+
+<div class="vr-prompt" hidden>
+  <div class="vr-card">
+    <h2>VR headset detected</h2>
+    <p>Play MiBlox in VR? You can pick worlds from inside the lobby.</p>
+    <div class="vr-card-actions">
+      <button class="primary vr-yes">Enter VR</button>
+      <button class="ghost vr-no">Not now</button>
+    </div>
+    <label class="vr-never"><input type="checkbox" class="vr-dont-ask" /> Do not ask again</label>
+  </div>
+</div>
 
 <div class="toast" hidden></div>
 `;

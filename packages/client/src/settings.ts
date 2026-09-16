@@ -8,6 +8,10 @@ export interface Settings {
   shadows: boolean;
   invertY: boolean;
   showStats: boolean;
+  /** Ask to enter VR when a headset is detected. Desktop asks on launch. */
+  askForVr: boolean;
+  /** Skip the menu and go straight to the lobby. */
+  autoLobby: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -18,6 +22,8 @@ export const DEFAULT_SETTINGS: Settings = {
   shadows: true,
   invertY: false,
   showStats: false,
+  askForVr: true,
+  autoLobby: false,
 };
 
 const KEY = "miblox.settings";

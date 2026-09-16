@@ -1,0 +1,1296 @@
+{
+  "format": "miblox-place",
+  "version": 1,
+  "name": "Lobby",
+  "terrain": {
+    "seed": 1,
+    "seaLevel": -4096,
+    "amplitude": 1,
+    "scale": 256,
+    "caves": false,
+    "chunks": []
+  },
+  "services": [
+    {
+      "id": "i2",
+      "className": "Workspace",
+      "name": "Workspace",
+      "props": {
+        "Gravity": 196.2,
+        "FallenPartsDestroyHeight": -500
+      },
+      "children": [
+        {
+          "id": "ii",
+          "className": "Part",
+          "name": "Floor",
+          "props": {
+            "CFrame": [
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "Size": [
+              180,
+              4,
+              180
+            ],
+            "Color": 2502206,
+            "Material": "Slate",
+            "Transparency": 0,
+            "Reflectance": 0,
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Massless": false,
+            "Shape": "Block",
+            "TextureId": "",
+            "AssemblyLinearVelocity": [
+              0,
+              0,
+              0
+            ],
+            "AssemblyAngularVelocity": [
+              0,
+              0,
+              0
+            ],
+            "NetworkOwnerId": ""
+          }
+        },
+        {
+          "id": "ij",
+          "className": "Part",
+          "name": "Inlay",
+          "props": {
+            "CFrame": [
+              0,
+              2.1,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "Size": [
+              96,
+              0.4,
+              96
+            ],
+            "Color": 5941759,
+            "Material": "Neon",
+            "Transparency": 0.35,
+            "Reflectance": 0,
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Massless": false,
+            "Shape": "Block",
+            "TextureId": "",
+            "AssemblyLinearVelocity": [
+              0,
+              0,
+              0
+            ],
+            "AssemblyAngularVelocity": [
+              0,
+              0,
+              0
+            ],
+            "NetworkOwnerId": ""
+          }
+        },
+        {
+          "id": "ik",
+          "className": "SpawnLocation",
+          "name": "SpawnLocation",
+          "props": {
+            "CFrame": [
+              0,
+              2.5,
+              30,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "Size": [
+              16,
+              1,
+              16
+            ],
+            "Color": 4628570,
+            "Material": "Concrete",
+            "Transparency": 0,
+            "Reflectance": 0,
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Massless": false,
+            "Shape": "Block",
+            "TextureId": "",
+            "AssemblyLinearVelocity": [
+              0,
+              0,
+              0
+            ],
+            "AssemblyAngularVelocity": [
+              0,
+              0,
+              0
+            ],
+            "NetworkOwnerId": "",
+            "Neutral": true,
+            "Duration": 0
+          }
+        },
+        {
+          "id": "il",
+          "className": "Part",
+          "name": "Pillar1",
+          "props": {
+            "CFrame": [
+              74,
+              19,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "Size": [
+              5,
+              34,
+              5
+            ],
+            "Color": 3423826,
+            "Material": "Concrete",
+            "Transparency": 0,
+            "Reflectance": 0,
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Massless": false,
+            "Shape": "Block",
+            "TextureId": "",
+            "AssemblyLinearVelocity": [
+              0,
+              0,
+              0
+            ],
+            "AssemblyAngularVelocity": [
+              0,
+              0,
+              0
+            ],
+            "NetworkOwnerId": ""
+          }
+        },
+        {
+          "id": "im",
+          "className": "Part",
+          "name": "Lamp1",
+          "props": {
+            "CFrame": [
+              74,
+              36.4,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "Size": [
+              5.6,
+              1.2,
+              5.6
+            ],
+            "Color": 9226495,
+            "Material": "Neon",
+            "Transparency": 0,
+            "Reflectance": 0,
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Massless": false,
+            "Shape": "Block",
+            "TextureId": "",
+            "AssemblyLinearVelocity": [
+              0,
+              0,
+              0
+            ],
+            "AssemblyAngularVelocity": [
+              0,
+              0,
+              0
+            ],
+            "NetworkOwnerId": ""
+          }
+        },
+        {
+          "id": "in",
+          "className": "Part",
+          "name": "Pillar2",
+          "props": {
+            "CFrame": [
+              59.86725758374611,
+              19,
+              43.496108669643014,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "Size": [
+              5,
+              34,
+              5
+            ],
+            "Color": 3423826,
+            "Material": "Concrete",
+            "Transparency": 0,
+            "Reflectance": 0,
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Massless": false,
+            "Shape": "Block",
+            "TextureId": "",
+            "AssemblyLinearVelocity": [
+              0,
+              0,
+              0
+            ],
+            "AssemblyAngularVelocity": [
+              0,
+              0,
+              0
+            ],
+            "NetworkOwnerId": ""
+          }
+        },
+        {
+          "id": "io",
+          "className": "Part",
+          "name": "Lamp2",
+          "props": {
+            "CFrame": [
+              59.86725758374611,
+              36.4,
+              43.496108669643014,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "Size": [
+              5.6,
+              1.2,
+              5.6
+            ],
+            "Color": 9226495,
+            "Material": "Neon",
+            "Transparency": 0,
+            "Reflectance": 0,
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Massless": false,
+            "Shape": "Block",
+            "TextureId": "",
+            "AssemblyLinearVelocity": [
+              0,
+              0,
+              0
+            ],
+            "AssemblyAngularVelocity": [
+              0,
+              0,
+              0
+            ],
+            "NetworkOwnerId": ""
+          }
+        },
+        {
+          "id": "ip",
+          "className": "Part",
+          "name": "Pillar3",
+          "props": {
+            "CFrame": [
+              22.86725758374611,
+              19,
+              70.37818220584136,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "Size": [
+              5,
+              34,
+              5
+            ],
+            "Color": 3423826,
+            "Material": "Concrete",
+            "Transparency": 0,
+            "Reflectance": 0,
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Massless": false,
+            "Shape": "Block",
+            "TextureId": "",
+            "AssemblyLinearVelocity": [
+              0,
+              0,
+              0
+            ],
+            "AssemblyAngularVelocity": [
+              0,
+              0,
+              0
+            ],
+            "NetworkOwnerId": ""
+          }
+        },
+        {
+          "id": "iq",
+          "className": "Part",
+          "name": "Lamp3",
+          "props": {
+            "CFrame": [
+              22.86725758374611,
+              36.4,
+              70.37818220584136,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "Size": [
+              5.6,
+              1.2,
+              5.6
+            ],
+            "Color": 9226495,
+            "Material": "Neon",
+            "Transparency": 0,
+            "Reflectance": 0,
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Massless": false,
+            "Shape": "Block",
+            "TextureId": "",
+            "AssemblyLinearVelocity": [
+              0,
+              0,
+              0
+            ],
+            "AssemblyAngularVelocity": [
+              0,
+              0,
+              0
+            ],
+            "NetworkOwnerId": ""
+          }
+        },
+        {
+          "id": "ir",
+          "className": "Part",
+          "name": "Pillar4",
+          "props": {
+            "CFrame": [
+              -22.867257583746103,
+              19,
+              70.37818220584137,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "Size": [
+              5,
+              34,
+              5
+            ],
+            "Color": 3423826,
+            "Material": "Concrete",
+            "Transparency": 0,
+            "Reflectance": 0,
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Massless": false,
+            "Shape": "Block",
+            "TextureId": "",
+            "AssemblyLinearVelocity": [
+              0,
+              0,
+              0
+            ],
+            "AssemblyAngularVelocity": [
+              0,
+              0,
+              0
+            ],
+            "NetworkOwnerId": ""
+          }
+        },
+        {
+          "id": "is",
+          "className": "Part",
+          "name": "Lamp4",
+          "props": {
+            "CFrame": [
+              -22.867257583746103,
+              36.4,
+              70.37818220584137,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "Size": [
+              5.6,
+              1.2,
+              5.6
+            ],
+            "Color": 9226495,
+            "Material": "Neon",
+            "Transparency": 0,
+            "Reflectance": 0,
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Massless": false,
+            "Shape": "Block",
+            "TextureId": "",
+            "AssemblyLinearVelocity": [
+              0,
+              0,
+              0
+            ],
+            "AssemblyAngularVelocity": [
+              0,
+              0,
+              0
+            ],
+            "NetworkOwnerId": ""
+          }
+        },
+        {
+          "id": "it",
+          "className": "Part",
+          "name": "Pillar5",
+          "props": {
+            "CFrame": [
+              -59.8672575837461,
+              19,
+              43.49610866964302,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "Size": [
+              5,
+              34,
+              5
+            ],
+            "Color": 3423826,
+            "Material": "Concrete",
+            "Transparency": 0,
+            "Reflectance": 0,
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Massless": false,
+            "Shape": "Block",
+            "TextureId": "",
+            "AssemblyLinearVelocity": [
+              0,
+              0,
+              0
+            ],
+            "AssemblyAngularVelocity": [
+              0,
+              0,
+              0
+            ],
+            "NetworkOwnerId": ""
+          }
+        },
+        {
+          "id": "iu",
+          "className": "Part",
+          "name": "Lamp5",
+          "props": {
+            "CFrame": [
+              -59.8672575837461,
+              36.4,
+              43.49610866964302,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "Size": [
+              5.6,
+              1.2,
+              5.6
+            ],
+            "Color": 9226495,
+            "Material": "Neon",
+            "Transparency": 0,
+            "Reflectance": 0,
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Massless": false,
+            "Shape": "Block",
+            "TextureId": "",
+            "AssemblyLinearVelocity": [
+              0,
+              0,
+              0
+            ],
+            "AssemblyAngularVelocity": [
+              0,
+              0,
+              0
+            ],
+            "NetworkOwnerId": ""
+          }
+        },
+        {
+          "id": "iv",
+          "className": "Part",
+          "name": "Pillar6",
+          "props": {
+            "CFrame": [
+              -74,
+              19,
+              9.062386313690414e-15,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "Size": [
+              5,
+              34,
+              5
+            ],
+            "Color": 3423826,
+            "Material": "Concrete",
+            "Transparency": 0,
+            "Reflectance": 0,
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Massless": false,
+            "Shape": "Block",
+            "TextureId": "",
+            "AssemblyLinearVelocity": [
+              0,
+              0,
+              0
+            ],
+            "AssemblyAngularVelocity": [
+              0,
+              0,
+              0
+            ],
+            "NetworkOwnerId": ""
+          }
+        },
+        {
+          "id": "iw",
+          "className": "Part",
+          "name": "Lamp6",
+          "props": {
+            "CFrame": [
+              -74,
+              36.4,
+              9.062386313690414e-15,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "Size": [
+              5.6,
+              1.2,
+              5.6
+            ],
+            "Color": 9226495,
+            "Material": "Neon",
+            "Transparency": 0,
+            "Reflectance": 0,
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Massless": false,
+            "Shape": "Block",
+            "TextureId": "",
+            "AssemblyLinearVelocity": [
+              0,
+              0,
+              0
+            ],
+            "AssemblyAngularVelocity": [
+              0,
+              0,
+              0
+            ],
+            "NetworkOwnerId": ""
+          }
+        },
+        {
+          "id": "ix",
+          "className": "Part",
+          "name": "Pillar7",
+          "props": {
+            "CFrame": [
+              -59.86725758374611,
+              19,
+              -43.49610866964301,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "Size": [
+              5,
+              34,
+              5
+            ],
+            "Color": 3423826,
+            "Material": "Concrete",
+            "Transparency": 0,
+            "Reflectance": 0,
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Massless": false,
+            "Shape": "Block",
+            "TextureId": "",
+            "AssemblyLinearVelocity": [
+              0,
+              0,
+              0
+            ],
+            "AssemblyAngularVelocity": [
+              0,
+              0,
+              0
+            ],
+            "NetworkOwnerId": ""
+          }
+        },
+        {
+          "id": "iy",
+          "className": "Part",
+          "name": "Lamp7",
+          "props": {
+            "CFrame": [
+              -59.86725758374611,
+              36.4,
+              -43.49610866964301,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "Size": [
+              5.6,
+              1.2,
+              5.6
+            ],
+            "Color": 9226495,
+            "Material": "Neon",
+            "Transparency": 0,
+            "Reflectance": 0,
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Massless": false,
+            "Shape": "Block",
+            "TextureId": "",
+            "AssemblyLinearVelocity": [
+              0,
+              0,
+              0
+            ],
+            "AssemblyAngularVelocity": [
+              0,
+              0,
+              0
+            ],
+            "NetworkOwnerId": ""
+          }
+        },
+        {
+          "id": "iz",
+          "className": "Part",
+          "name": "Pillar8",
+          "props": {
+            "CFrame": [
+              -22.86725758374612,
+              19,
+              -70.37818220584136,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "Size": [
+              5,
+              34,
+              5
+            ],
+            "Color": 3423826,
+            "Material": "Concrete",
+            "Transparency": 0,
+            "Reflectance": 0,
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Massless": false,
+            "Shape": "Block",
+            "TextureId": "",
+            "AssemblyLinearVelocity": [
+              0,
+              0,
+              0
+            ],
+            "AssemblyAngularVelocity": [
+              0,
+              0,
+              0
+            ],
+            "NetworkOwnerId": ""
+          }
+        },
+        {
+          "id": "i10",
+          "className": "Part",
+          "name": "Lamp8",
+          "props": {
+            "CFrame": [
+              -22.86725758374612,
+              36.4,
+              -70.37818220584136,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "Size": [
+              5.6,
+              1.2,
+              5.6
+            ],
+            "Color": 9226495,
+            "Material": "Neon",
+            "Transparency": 0,
+            "Reflectance": 0,
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Massless": false,
+            "Shape": "Block",
+            "TextureId": "",
+            "AssemblyLinearVelocity": [
+              0,
+              0,
+              0
+            ],
+            "AssemblyAngularVelocity": [
+              0,
+              0,
+              0
+            ],
+            "NetworkOwnerId": ""
+          }
+        },
+        {
+          "id": "i11",
+          "className": "Part",
+          "name": "Pillar9",
+          "props": {
+            "CFrame": [
+              22.867257583746095,
+              19,
+              -70.37818220584137,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "Size": [
+              5,
+              34,
+              5
+            ],
+            "Color": 3423826,
+            "Material": "Concrete",
+            "Transparency": 0,
+            "Reflectance": 0,
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Massless": false,
+            "Shape": "Block",
+            "TextureId": "",
+            "AssemblyLinearVelocity": [
+              0,
+              0,
+              0
+            ],
+            "AssemblyAngularVelocity": [
+              0,
+              0,
+              0
+            ],
+            "NetworkOwnerId": ""
+          }
+        },
+        {
+          "id": "i12",
+          "className": "Part",
+          "name": "Lamp9",
+          "props": {
+            "CFrame": [
+              22.867257583746095,
+              36.4,
+              -70.37818220584137,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "Size": [
+              5.6,
+              1.2,
+              5.6
+            ],
+            "Color": 9226495,
+            "Material": "Neon",
+            "Transparency": 0,
+            "Reflectance": 0,
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Massless": false,
+            "Shape": "Block",
+            "TextureId": "",
+            "AssemblyLinearVelocity": [
+              0,
+              0,
+              0
+            ],
+            "AssemblyAngularVelocity": [
+              0,
+              0,
+              0
+            ],
+            "NetworkOwnerId": ""
+          }
+        },
+        {
+          "id": "i13",
+          "className": "Part",
+          "name": "Pillar10",
+          "props": {
+            "CFrame": [
+              59.8672575837461,
+              19,
+              -43.49610866964303,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "Size": [
+              5,
+              34,
+              5
+            ],
+            "Color": 3423826,
+            "Material": "Concrete",
+            "Transparency": 0,
+            "Reflectance": 0,
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Massless": false,
+            "Shape": "Block",
+            "TextureId": "",
+            "AssemblyLinearVelocity": [
+              0,
+              0,
+              0
+            ],
+            "AssemblyAngularVelocity": [
+              0,
+              0,
+              0
+            ],
+            "NetworkOwnerId": ""
+          }
+        },
+        {
+          "id": "i14",
+          "className": "Part",
+          "name": "Lamp10",
+          "props": {
+            "CFrame": [
+              59.8672575837461,
+              36.4,
+              -43.49610866964303,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "Size": [
+              5.6,
+              1.2,
+              5.6
+            ],
+            "Color": 9226495,
+            "Material": "Neon",
+            "Transparency": 0,
+            "Reflectance": 0,
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Massless": false,
+            "Shape": "Block",
+            "TextureId": "",
+            "AssemblyLinearVelocity": [
+              0,
+              0,
+              0
+            ],
+            "AssemblyAngularVelocity": [
+              0,
+              0,
+              0
+            ],
+            "NetworkOwnerId": ""
+          }
+        },
+        {
+          "id": "i15",
+          "className": "MeshPart",
+          "name": "Ring",
+          "props": {
+            "CFrame": [
+              0,
+              44,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "Size": [
+              46,
+              46,
+              46
+            ],
+            "Color": 7910655,
+            "Material": "Neon",
+            "Transparency": 0.25,
+            "Reflectance": 0,
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Massless": false,
+            "Shape": "Block",
+            "TextureId": "",
+            "AssemblyLinearVelocity": [
+              0,
+              0,
+              0
+            ],
+            "AssemblyAngularVelocity": [
+              0,
+              0,
+              0
+            ],
+            "NetworkOwnerId": "",
+            "MeshId": "builtin:torus",
+            "MeshScale": [
+              1,
+              1,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "i3",
+      "className": "Players",
+      "name": "Players",
+      "props": {
+        "MaxPlayers": 32,
+        "RespawnTime": 5,
+        "CharacterAutoLoads": true
+      }
+    },
+    {
+      "id": "i4",
+      "className": "Lighting",
+      "name": "Lighting",
+      "props": {
+        "ClockTime": 14,
+        "Ambient": 5526612,
+        "OutdoorAmbient": 8026746,
+        "Brightness": 2,
+        "FogStart": 400,
+        "FogEnd": 3000,
+        "FogColor": 13161696,
+        "GeographicLatitude": 41.7
+      }
+    },
+    {
+      "id": "i5",
+      "className": "ReplicatedStorage",
+      "name": "ReplicatedStorage",
+      "props": {}
+    },
+    {
+      "id": "i6",
+      "className": "ReplicatedFirst",
+      "name": "ReplicatedFirst",
+      "props": {}
+    },
+    {
+      "id": "i7",
+      "className": "ServerStorage",
+      "name": "ServerStorage",
+      "props": {}
+    },
+    {
+      "id": "i8",
+      "className": "ServerScriptService",
+      "name": "ServerScriptService",
+      "props": {},
+      "children": [
+        {
+          "id": "i16",
+          "className": "Script",
+          "name": "Lobby",
+          "props": {
+            "Source": "--!strict\n-- The lobby.\n--\n-- A real place that players join, exactly like any other world. The game\n-- picker itself is drawn by the client, so it can list whatever is published\n-- without the lobby needing to be rebuilt.\n\nlocal Players = game:GetService(\"Players\")\nlocal Lighting = game:GetService(\"Lighting\")\n\nLighting.ClockTime = 15.5\n\nPlayers.PlayerAdded:Connect(function(player)\n\tprint(player.Name .. \" arrived in the lobby\")\nend)\n\n-- A slowly turning ring overhead, so the room is not completely static.\nlocal ring = workspace:FindFirstChild(\"Ring\")\nif ring then\n\ttask.spawn(function()\n\t\tlocal angle = 0\n\t\twhile true do\n\t\t\tangle += 0.02\n\t\t\tring.CFrame = CFrame.new(ring.CFrame.Position) * CFrame.Angles(0, angle, 0)\n\t\t\ttask.wait(0.05)\n\t\tend\n\tend)\nend\n",
+            "Enabled": true,
+            "RunContext": "Legacy"
+          }
+        }
+      ]
+    },
+    {
+      "id": "i9",
+      "className": "StarterPlayer",
+      "name": "StarterPlayer",
+      "props": {},
+      "children": [
+        {
+          "id": "ie",
+          "className": "StarterPlayerScripts",
+          "name": "StarterPlayerScripts",
+          "props": {}
+        },
+        {
+          "id": "if",
+          "className": "StarterCharacterScripts",
+          "name": "StarterCharacterScripts",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "id": "ia",
+      "className": "StarterGui",
+      "name": "StarterGui",
+      "props": {}
+    },
+    {
+      "id": "ib",
+      "className": "StarterPack",
+      "name": "StarterPack",
+      "props": {}
+    },
+    {
+      "id": "ic",
+      "className": "SoundService",
+      "name": "SoundService",
+      "props": {}
+    },
+    {
+      "id": "id",
+      "className": "Teams",
+      "name": "Teams",
+      "props": {}
+    }
+  ],
+  "description": "The hub. Pick a world from here, in the browser or in VR.",
+  "maxPlayers": 40,
+  "serverAuthoritative": false,
+  "tickRate": 30,
+  "isLobby": true
+}
