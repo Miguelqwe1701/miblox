@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import {
   BasePart,
+  Color3,
   DataModel,
   Instance as EngineInstance,
   Lighting,
@@ -9,6 +10,12 @@ import {
   isBuiltinMesh,
   materialProps,
 } from "@miblox/core";
+
+/** Frees a mesh's material, whether it is one material or a six-sided set. */
+function disposeMaterial(material: THREE.Material | THREE.Material[]): void {
+  if (Array.isArray(material)) for (const entry of material) entry.dispose();
+  else material.dispose();
+}
 
 /**
  * Shapes the renderer can build without downloading anything.
@@ -102,6 +109,7 @@ export class WorldView {
   private readonly targets = new Map<BasePart, { position: THREE.Vector3; quaternion: THREE.Quaternion }>();
   private readonly geometries = new Map<string, THREE.BufferGeometry>();
   private readonly textures = new Map<string, THREE.Texture>();
+  private readonly faceTextures = new Map<string, THREE.Texture>();
   private readonly meshRequests = new Map<string, Promise<THREE.BufferGeometry>>();
   /** Parts this client simulates itself are not interpolated. */
   isLocallySimulated: (part: BasePart) => boolean = () => false;
@@ -123,6 +131,47 @@ export class WorldView {
     return part.Name === "Head" && !!part.TextureId;
   }
 
+  /** Identifies the materials a part currently wants, so changes are noticed. */
+  private materialKeyFor(part: BasePart): string {
+    return `${this.isFacePart(part) ? "face" : "plain"}|${part.TextureId ?? ""}|${part.Color.toHex()}`;
+  }
+
+  /**
+   * A face texture drawn onto the skin colour, so the head stays opaque.
+   *
+   * Face art is mostly transparent - two eyes and a mouth over nothing - so
+   * using it directly either punches a hole through the front of the head
+   * (transparent) or paints the empty background black (opaque). Compositing
+   * it over the skin colour gives one opaque texture that lights like the
+   * other five sides.
+   */
+  private faceTextureFor(url: string, color: Color3): THREE.Texture {
+    const key = `${url}|${color.toHex()}`;
+    const cached = this.faceTextures.get(key);
+    if (cached) return cached;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext("2d")!;
+    const to255 = (c: number) => Math.round(Math.max(0, Math.min(1, c)) * 255);
+    ctx.fillStyle = `rgb(${to255(color.r)},${to255(color.g)},${to255(color.b)})`;
+    ctx.fillRect(0, 0, 256, 256);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    this.faceTextures.set(key, texture);
+
+    const image = new Image();
+    image.crossOrigin = "anonymous";
+    image.onload = () => {
+      ctx.drawImage(image, 0, 0, 256, 256);
+      texture.needsUpdate = true;
+    };
+    image.src = url;
+    return texture;
+  }
+
   /**
    * Materials for a head: plain skin everywhere, the face on the front.
    *
@@ -136,9 +185,7 @@ export class WorldView {
         flatShading: true,
       });
     const face = new THREE.MeshLambertMaterial({
-      color: new THREE.Color(part.Color.r, part.Color.g, part.Color.b),
-      map: this.textureFor(part.TextureId),
-      transparent: true,
+      map: this.faceTextureFor(part.TextureId, part.Color),
       flatShading: true,
     });
     return [skin(), skin(), skin(), skin(), skin(), face];
@@ -152,6 +199,7 @@ export class WorldView {
       this.isFacePart(inst) ? this.headMaterials(inst) : this.materialFor(inst),
     );
     mesh.userData.geometryKey = this.geometryKeyFor(inst);
+    mesh.userData.materialKey = this.materialKeyFor(inst);
     mesh.name = inst.Name;
     mesh.castShadow = true;
     mesh.receiveShadow = true;
@@ -170,9 +218,7 @@ export class WorldView {
     const mesh = this.objects.get(inst);
     if (!mesh) return;
     this.group.remove(mesh);
-    const material = mesh.material as THREE.Material | THREE.Material[];
-    if (Array.isArray(material)) for (const entry of material) entry.dispose();
-    else material.dispose();
+    disposeMaterial(mesh.material as THREE.Material | THREE.Material[]);
     this.objects.delete(inst);
     this.targets.delete(inst);
   }
@@ -353,10 +399,24 @@ export class WorldView {
         mesh.geometry = this.geometryFor(part);
       }
 
+      // A face arrives as a property after the part itself, so the choice
+      // between one material and a six-sided head has to be revisited rather
+      // than fixed at creation.
+      const materialKey = this.materialKeyFor(part);
+      if (mesh.userData.materialKey !== materialKey) {
+        mesh.userData.materialKey = materialKey;
+        const wantsFace = this.isFacePart(part);
+        if (wantsFace || Array.isArray(mesh.material)) {
+          disposeMaterial(mesh.material);
+          mesh.material = wantsFace ? this.headMaterials(part) : this.materialFor(part);
+        }
+      }
+
       if (Array.isArray(mesh.material)) {
-        // A head with a face: keep the skin colour in step and leave the face
-        // texture alone.
-        for (const entry of mesh.material as THREE.MeshLambertMaterial[]) {
+        // A head with a face: keep the skin colour in step and leave the
+        // composited face alone.
+        const materials = mesh.material as THREE.MeshLambertMaterial[];
+        for (const entry of materials.slice(0, 5)) {
           entry.color.setRGB(part.Color.r, part.Color.g, part.Color.b);
         }
         continue;

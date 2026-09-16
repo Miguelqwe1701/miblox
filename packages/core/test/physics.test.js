@@ -8,6 +8,7 @@ import {
   createInstance,
   buildCharacter,
   loadCharacterFor,
+  buildAvatar,
   Color3,
   rayAABB,
   MATERIAL_ID,
@@ -358,4 +359,105 @@ test("a player's character can be swapped for another model", () => {
   assert.equal(player.Character, replacement);
   assert.equal(game.Players.GetPlayerFromCharacter(replacement), player);
   assert.equal(game.Players.GetPlayerFromCharacter(first), null);
+});
+
+// ---------------------------------------------------------------------------
+// A character rests on its feet, not its hips
+// ---------------------------------------------------------------------------
+
+/** Lowest point of any part in a character, in world space. */
+function soles(character) {
+  let lowest = Infinity;
+  for (const part of character.GetDescendants()) {
+    if (!part.Size) continue;
+    lowest = Math.min(lowest, part.CFrame.position.y - part.Size.y / 2);
+  }
+  return lowest;
+}
+
+test("a character stands on its feet rather than sinking to the hips", () => {
+  const { game, physics } = makeWorld();
+  const floor = createInstance("Part", game.Workspace);
+  floor.Anchored = true;
+  floor.Size = new Vector3(200, 4, 200);
+  floor.CFrame = CFrame.fromPosition(Vector3.zero);
+  const floorTop = 2;
+
+  const char = buildCharacter({ position: new Vector3(0, 40, 0) });
+  char.Parent = game.Workspace;
+  simulate(physics, 4);
+
+  // Only the root collides, but the legs hang two studs below it. Without hip
+  // height the root rests on the floor and the legs end up buried.
+  const feet = soles(char);
+  assert.ok(
+    Math.abs(feet - floorTop) < 0.75,
+    `feet should rest on the floor at y=${floorTop}, got ${feet.toFixed(2)}`,
+  );
+
+  const root = char.FindFirstChild("HumanoidRootPart");
+  assert.ok(
+    root.CFrame.position.y > floorTop + 2,
+    `the root should be well above the floor, got ${root.CFrame.position.y.toFixed(2)}`,
+  );
+});
+
+test("a character stands on voxel terrain at the right height too", () => {
+  const { game, physics } = makeWorld();
+  for (let x = -3; x <= 3; x++) {
+    for (let z = -3; z <= 3; z++) game.Terrain.SetVoxel(x, 0, z, MATERIAL_ID.Rock);
+  }
+  const groundTop = 4; // one voxel, 4 studs tall
+
+  const char = buildCharacter({ position: new Vector3(2, 40, 2) });
+  char.Parent = game.Workspace;
+  simulate(physics, 4);
+
+  const feet = soles(char);
+  assert.ok(
+    Math.abs(feet - groundTop) < 0.75,
+    `feet should rest on terrain at y=${groundTop}, got ${feet.toFixed(2)}`,
+  );
+});
+
+test("a scaled character's hip height scales with it", () => {
+  const { game, physics } = makeWorld();
+  const floor = createInstance("Part", game.Workspace);
+  floor.Anchored = true;
+  floor.Size = new Vector3(200, 4, 200);
+  floor.CFrame = CFrame.fromPosition(Vector3.zero);
+
+  const tall = buildAvatar({ heightScale: 1.5 }, { position: new Vector3(0, 40, 0) });
+  tall.Parent = game.Workspace;
+  const humanoid = tall.FindFirstChildOfClass("Humanoid");
+  assert.ok(humanoid.HipHeight > 2, "a taller rig has further to reach");
+
+  simulate(physics, 4);
+  const feet = soles(tall);
+  assert.ok(
+    Math.abs(feet - 2) < 0.9,
+    `a scaled character should also stand on the floor, got ${feet.toFixed(2)}`,
+  );
+});
+
+test("walking keeps the feet on the ground", () => {
+  const { game, physics } = makeWorld();
+  const floor = createInstance("Part", game.Workspace);
+  floor.Anchored = true;
+  floor.Size = new Vector3(400, 4, 400);
+  floor.CFrame = CFrame.fromPosition(Vector3.zero);
+
+  const char = buildCharacter({ position: new Vector3(0, 20, 0) });
+  char.Parent = game.Workspace;
+  simulate(physics, 2);
+  const restingFeet = soles(char);
+
+  char.FindFirstChildOfClass("Humanoid").MoveDirection = new Vector3(1, 0, 0);
+  simulate(physics, 1.5);
+
+  assert.ok(char.FindFirstChild("HumanoidRootPart").CFrame.position.x > 5, "should have walked");
+  assert.ok(
+    Math.abs(soles(char) - restingFeet) < 0.6,
+    "and stayed at the same height while walking",
+  );
 });

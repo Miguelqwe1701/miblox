@@ -277,11 +277,12 @@ export class PhysicsWorld {
       humanoid.changeState("Dead");
       return;
     }
-    const half = root.Size.mul(0.5);
+    // How far the feet are below the root's own box.
+    const hipHeight = Math.max(0, humanoid.HipHeight);
     let position = root.CFrame.position;
     let velocity = root.AssemblyLinearVelocity;
 
-    const grounded = this.isGrounded(position, half, root, colliders);
+    const grounded = this.isGrounded(position, root, hipHeight, root, colliders);
     const inWater = this.isInWater(position);
 
     // Horizontal control: snap toward the requested direction. Air control is
@@ -320,7 +321,7 @@ export class PhysicsWorld {
       position = position.add(
         new Vector3(axis === "x" ? d : 0, axis === "y" ? d : 0, axis === "z" ? d : 0),
       );
-      const box: AABB = { min: position.sub(half), max: position.add(half) };
+      const box = this.characterBox(position, root, hipHeight);
       let push = this.resolveBox(box, root, colliders, axis);
       if (push !== 0 && axis !== "y" && grounded) {
         // Step-up: try lifting over obstacles up to one voxel tall.
@@ -368,10 +369,34 @@ export class PhysicsWorld {
     }
   }
 
-  isGrounded(position: Vector3, half: Vector3, self: BasePart, colliders: BasePart[]): boolean {
+  /**
+   * The volume a character actually occupies.
+   *
+   * Only the root part collides - limbs would snag on geometry - but the root
+   * is just the torso's 2x2x1 box, and the legs hang below it. Colliding the
+   * root alone rests the torso on the ground and leaves the legs buried, so
+   * the box is extended downward by the humanoid's hip height to reach the
+   * feet.
+   */
+  characterBox(position: Vector3, root: BasePart, hipHeight: number): AABB {
+    const half = root.Size.mul(0.5);
+    return {
+      min: new Vector3(position.x - half.x, position.y - half.y - hipHeight, position.z - half.z),
+      max: new Vector3(position.x + half.x, position.y + half.y, position.z + half.z),
+    };
+  }
+
+  isGrounded(
+    position: Vector3,
+    root: BasePart,
+    hipHeight: number,
+    self: BasePart,
+    colliders: BasePart[],
+  ): boolean {
+    const box = this.characterBox(position, root, hipHeight);
     const probe: AABB = {
-      min: position.sub(half).sub(new Vector3(0, 0.35, 0)),
-      max: new Vector3(position.x + half.x, position.y - half.y + 0.05, position.z + half.z),
+      min: new Vector3(box.min.x, box.min.y - 0.35, box.min.z),
+      max: new Vector3(box.max.x, box.min.y + 0.05, box.max.z),
     };
     for (const other of colliders) {
       if (other === self || !other.CanCollide) continue;

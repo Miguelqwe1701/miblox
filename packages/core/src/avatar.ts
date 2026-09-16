@@ -11,7 +11,12 @@ import {
   Shirt,
   ShirtGraphic,
 } from "./classes.js";
-import { RIG_LIMBS, buildCharacter, type CharacterOptions } from "./character.js";
+import {
+  DEFAULT_HIP_HEIGHT,
+  RIG_LIMBS,
+  buildCharacter,
+  type CharacterOptions,
+} from "./character.js";
 import { getAsset, isCompatible, parseAssetList, type AssetInfo } from "./assets.js";
 
 /**
@@ -342,6 +347,8 @@ function applyScale(model: Model, description: HumanoidDescriptionData, origin: 
   if (root) {
     root.setProperty("Size", new Vector3(2 * width, 2 * height, 1 * width));
   }
+  const humanoid = model.FindFirstChildOfClass("Humanoid") as Humanoid | null;
+  if (humanoid) humanoid.setProperty("HipHeight", DEFAULT_HIP_HEIGHT * height);
 }
 
 /** Adds one accessory, as an Accessory containing a Handle. */

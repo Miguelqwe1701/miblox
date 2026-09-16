@@ -31,8 +31,16 @@ export const PLACEHOLDER_SKIN = {
 };
 
 export const ROOT_SIZE = new Vector3(2, 2, 1);
-/** Distance from the root centre to the soles, used for ground placement. */
+/**
+ * Distance from the root's centre down to the soles.
+ *
+ * The root is the torso's box, so the legs hang below it. Physics needs this
+ * to rest a character on its feet rather than on its hips.
+ */
 export const HIP_TO_GROUND = 3;
+
+/** How far the feet sit below the root part's own box. */
+export const DEFAULT_HIP_HEIGHT = HIP_TO_GROUND - ROOT_SIZE.y / 2;
 
 export const RIG_LIMBS: RigLimb[] = [
   {
@@ -153,6 +161,9 @@ export function buildCharacter(opts: CharacterOptions = {}): Model {
   humanoid.Name = "Humanoid";
   humanoid.WalkSpeed = opts.walkSpeed ?? 16;
   humanoid.JumpPower = opts.jumpPower ?? 50;
+  // Without this the solver rests the root box on the ground and the legs,
+  // which hang below it, end up buried.
+  humanoid.HipHeight = DEFAULT_HIP_HEIGHT;
   humanoid.setParent(model);
 
   return model;
