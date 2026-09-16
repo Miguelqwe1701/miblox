@@ -1,0 +1,35 @@
+{
+  "name": "miblox",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MiBlox \u2014 a cross-platform blocky sandbox game engine with Luau scripting",
+  "license": "MIT",
+  "type": "module",
+  "workspaces": [
+    "packages/core",
+    "packages/luau",
+    "packages/scripting",
+    "packages/auth",
+    "packages/wasm",
+    "packages/server",
+    "packages/client",
+    "packages/desktop"
+  ],
+  "scripts": {
+    "build": "npm run build -w @miblox/wasm && npm run build -w @miblox/core && npm run build -w @miblox/luau && npm run build -w @miblox/scripting && npm run build -w @miblox/auth && npm run build -w @miblox/server && npm run build -w @miblox/client",
+    "test": "npm run test -w @miblox/core && npm run test -w @miblox/luau && npm run test -w @miblox/wasm && npm run test -w @miblox/scripting && npm run test -w @miblox/auth && npm run test -w @miblox/server",
+    "dev:client": "npm run dev -w @miblox/client",
+    "dev:desktop": "npm run start -w @miblox/desktop",
+    "start": "node packages/server/dist/main.js",
+    "place:build": "node packages/server/dist/tools/build-place.js places",
+    "portal": "bash scripts/portal.sh"
+  },
+  "devDependencies": {
+    "@types/node": "^26.5.1",
+    "playwright": "^1.63.0",
+    "typescript": "^5.6.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

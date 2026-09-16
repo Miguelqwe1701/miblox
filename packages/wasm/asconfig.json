@@ -1,0 +1,23 @@
+{
+  "targets": {
+    "release": {
+      "outFile": "build/miblox.wasm",
+      "textFile": "build/miblox.wat",
+      "sourceMap": false,
+      "optimizeLevel": 3,
+      "shrinkLevel": 1,
+      "converge": true,
+      "noAssert": true
+    },
+    "debug": {
+      "outFile": "build/miblox.debug.wasm",
+      "debug": true
+    }
+  },
+  "options": {
+    "bindings": "raw",
+    "exportRuntime": false,
+    "runtime": "stub",
+    "initialMemory": 48
+  }
+}
