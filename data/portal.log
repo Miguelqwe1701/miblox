@@ -1,3 +1,18 @@
 [portal] found 2 place(s) in /home/user/miblox/places
 [portal] listening on http://localhost:3000
 [portal] no Migood credentials configured, so everyone plays as a guest
+[manager] launching Lobby as server 425c4033 on port 7100
+[425c4033] started: Lobby at 30Hz, client ownership enabled
+[manager] server 425c4033 ready on port 7100
+[425c4033] Guest joined (1/40)
+[425c4033] print: Guest arrived in the lobby
+[425c4033] Guest left (0/40)
+[manager] launching Baseplate as server 1fdc2b85 on port 7101
+[1fdc2b85] print: MiBlox starter place is running
+[1fdc2b85] started: Baseplate at 30Hz, client ownership enabled
+[manager] server 1fdc2b85 ready on port 7101
+[1fdc2b85] Guest joined (1/24)
+[1fdc2b85] print: Guest joined
+[1fdc2b85] Guest left (0/24)
+[manager] stopping idle server 425c4033
+[425c4033] shutting down (portal)
