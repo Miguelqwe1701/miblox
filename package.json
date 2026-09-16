@@ -17,6 +17,7 @@
   ],
   "scripts": {
     "build": "npm run build -w @miblox/wasm && npm run build -w @miblox/core && npm run build -w @miblox/luau && npm run build -w @miblox/scripting && npm run build -w @miblox/auth && npm run build -w @miblox/server && npm run build -w @miblox/client",
+    "typecheck": "tsc --noEmit -p packages/client/tsconfig.json",
     "test": "npm run test -w @miblox/core && npm run test -w @miblox/luau && npm run test -w @miblox/wasm && npm run test -w @miblox/scripting && npm run test -w @miblox/auth && npm run test -w @miblox/server",
     "dev:client": "npm run dev -w @miblox/client",
     "dev:desktop": "npm run start -w @miblox/desktop",
