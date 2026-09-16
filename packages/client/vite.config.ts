@@ -12,6 +12,7 @@ export default defineConfig({
       input: {
         index: resolve(here, "index.html"),
         studio: resolve(here, "studio.html"),
+        avatar: resolve(here, "avatar.html"),
       },
     },
     outDir: "dist",

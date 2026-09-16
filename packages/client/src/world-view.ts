@@ -151,6 +151,7 @@ export class WorldView {
       this.geometryFor(inst),
       this.isFacePart(inst) ? this.headMaterials(inst) : this.materialFor(inst),
     );
+    mesh.userData.geometryKey = this.geometryKeyFor(inst);
     mesh.name = inst.Name;
     mesh.castShadow = true;
     mesh.receiveShadow = true;
@@ -174,6 +175,19 @@ export class WorldView {
     else material.dispose();
     this.objects.delete(inst);
     this.targets.delete(inst);
+  }
+
+  /**
+   * A key identifying which geometry a part should currently be drawn with.
+   *
+   * Compared each frame so a part picks up a late MeshId. Properties always
+   * arrive after the instance itself - replication applies them in a second
+   * pass, and so does any code that parents a part before configuring it - so
+   * choosing geometry once at creation would leave every mesh a box.
+   */
+  private geometryKeyFor(part: BasePart): string {
+    if (part instanceof MeshPart && part.MeshId) return part.MeshId;
+    return part.Shape ?? "Block";
   }
 
   /** Unit geometries, scaled per part, so every box shares one buffer. */
@@ -331,6 +345,13 @@ export class WorldView {
 
       mesh.scale.set(part.Size.x, part.Size.y, part.Size.z);
       mesh.visible = part.Transparency < 1;
+
+      // Pick up a MeshId or Shape that arrived after the part did.
+      const geometryKey = this.geometryKeyFor(part);
+      if (mesh.userData.geometryKey !== geometryKey) {
+        mesh.userData.geometryKey = geometryKey;
+        mesh.geometry = this.geometryFor(part);
+      }
 
       if (Array.isArray(mesh.material)) {
         // A head with a face: keep the skin colour in step and leave the face

@@ -173,9 +173,16 @@ export class PortalServer {
         ? "/index.html"
         : path.startsWith("/studio/")
           ? "/studio.html"
-          : path;
+          : path === "/avatar" || path.startsWith("/avatar/")
+            ? "/avatar.html"
+            : path;
       if (await this.serveStatic(filePath, res)) return;
-      if (path === "/" || path.startsWith("/play/") || path.startsWith("/studio/")) {
+      if (
+        path === "/" ||
+        path.startsWith("/play/") ||
+        path.startsWith("/studio/") ||
+        path.startsWith("/avatar")
+      ) {
         return sendHtml(res, 200, fallbackPage(this.opts.manager.listGames()));
       }
     }

@@ -360,7 +360,9 @@ export function attachAccessory(
   const offset = Vector3.fromArray(asset.offset ?? [0, 0, 0]);
   accessory.AttachmentOffset = offset;
 
-  const handle = createInstance("MeshPart", accessory) as MeshPart;
+  // Built detached and parented last: a renderer watching for new instances
+  // would otherwise see the handle before it knows what mesh to draw.
+  const handle = createInstance("MeshPart") as MeshPart;
   handle.Name = "Handle";
   handle.MeshId = asset.meshId ?? "builtin:sphere";
   handle.TextureId = asset.texture ?? "";
@@ -374,6 +376,7 @@ export function attachAccessory(
   handle.CFrame = CFrame.fromPosition(
     origin.add(ATTACHMENT_OFFSETS[attachment] ?? Vector3.zero).add(offset),
   );
+  handle.setParent(accessory);
   return accessory;
 }
 

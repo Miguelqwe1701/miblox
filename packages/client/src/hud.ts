@@ -412,6 +412,7 @@ const TEMPLATE = `
       <div class="brand"><span class="brand-mark"></span><h1>MiBlox</h1></div>
       <div class="account">
         <span class="account-chip"><span class="account-dot"></span><span class="account-name">Guest</span></span>
+        <a class="ghost link-button" href="/avatar">Avatar</a>
         <button class="primary sign-in">Sign in with Migood</button>
         <button class="ghost rename" hidden>Change username</button>
       </div>
