@@ -169,9 +169,9 @@ export class PortalServer {
     // -- static ------------------------------------------------------------
     if (method === "GET" || method === "HEAD") {
       // These are client-side routes; serve the app and let it read the id.
-      const filePath = path.startsWith("/play/")
+      const filePath = path === "/play" || path.startsWith("/play/")
         ? "/index.html"
-        : path.startsWith("/studio/")
+        : path === "/studio" || path.startsWith("/studio/")
           ? "/studio.html"
           : path === "/avatar" || path.startsWith("/avatar/")
             ? "/avatar.html"
@@ -179,8 +179,8 @@ export class PortalServer {
       if (await this.serveStatic(filePath, res)) return;
       if (
         path === "/" ||
-        path.startsWith("/play/") ||
-        path.startsWith("/studio/") ||
+        path.startsWith("/play") ||
+        path.startsWith("/studio") ||
         path.startsWith("/avatar")
       ) {
         return sendHtml(res, 200, fallbackPage(this.opts.manager.listGames()));

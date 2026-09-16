@@ -7,6 +7,7 @@ import {
 } from "@miblox/core";
 import { AvatarPreview } from "./preview.js";
 import "./avatar.css";
+import { escapeHtml } from "../escape.js";
 
 interface Account {
   id: string;
@@ -342,12 +343,6 @@ class AvatarEditor {
 
 function hexColor(value: number): string {
   return `#${value.toString(16).padStart(6, "0")}`;
-}
-
-function escapeHtml(text: string): string {
-  return String(text).replace(/[&<>"']/g, (c) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c,
-  );
 }
 
 const root = document.getElementById("avatar") ?? document.body;

@@ -1,3 +1,4 @@
+import { escapeHtml } from "../escape.js";
 import * as THREE from "three";
 import {
   BasePart,
@@ -54,7 +55,7 @@ class Studio {
   async boot(): Promise<void> {
     this.renderShell();
     if (!this.placeId) {
-      this.setStatus("No world specified in the URL", true);
+      await this.offerWorlds();
       return;
     }
 
@@ -736,6 +737,38 @@ class Studio {
     const title = this.place?.name ?? "Studio";
     this.root.querySelector<HTMLElement>(".place-title")!.textContent = title;
     document.title = `${title} — MiBlox Studio`;
+  }
+
+  /**
+   * What /studio shows when no world was named.
+   *
+   * Opening the editor without an id is an easy thing to do - it is the URL
+   * people guess - so it offers the worlds there are rather than an error.
+   */
+  private async offerWorlds(): Promise<void> {
+    let games: Array<{ id: string; name: string }> = [];
+    try {
+      const res = await fetch("/api/games");
+      if (res.ok) games = (await res.json()) as Array<{ id: string; name: string }>;
+    } catch {
+      // Offline: fall through to the message below.
+    }
+    if (games.length === 0) {
+      this.setStatus("No world specified in the URL", true);
+      return;
+    }
+    this.setStatus("Pick a world to edit");
+    const picker = document.createElement("div");
+    picker.className = "world-picker";
+    picker.innerHTML =
+      "<h2>Open a world</h2>" +
+      games
+        .map(
+          (game) =>
+            `<a href="/studio/${encodeURIComponent(game.id)}">${escapeHtml(game.name)}</a>`,
+        )
+        .join("");
+    this.root.querySelector(".viewport")?.appendChild(picker);
   }
 
   private setStatus(message: string, isError = false): void {

@@ -1,3 +1,4 @@
+import { animateCharacter } from "./animation.js";
 import { CFrame, Vector3, clamp } from "./math.js";
 import { BasePart, Humanoid, Model, Workspace } from "./classes.js";
 import type { Instance } from "./instance.js";
@@ -359,14 +360,11 @@ export class PhysicsWorld {
       cf = cf.lerp(target, clamp(dt * 12, 0, 1));
     }
 
-    const delta = cf.position.sub(root.CFrame.position);
     root.setProperty("CFrame", cf);
     root.setProperty("AssemblyLinearVelocity", velocity);
-    // Rig parts ride along with the root.
-    for (const desc of model.GetDescendants()) {
-      if (desc === root || !(desc instanceof BasePart)) continue;
-      desc.setProperty("CFrame", desc.CFrame.add(delta));
-    }
+    // Limbs are posed against the root rather than dragged along behind it, so
+    // they turn with the character and swing as it walks.
+    animateCharacter(model, humanoid, root, dt);
   }
 
   /**

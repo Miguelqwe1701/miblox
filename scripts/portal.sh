@@ -16,6 +16,9 @@ LOGFILE="${ROOT}/data/portal.log"
 export MIBLOX_PORT MIBLOX_CLIENT_DIR MIBLOX_PLACES_DIR MIBLOX_TICKET_SECRET
 
 stop_portal() {
+  # A stale pidfile - one left behind by a crash, or restored from git - would
+  # otherwise leave the running portal alone and let the replacement fail with
+  # EADDRINUSE while "restart" still reported success.
   if [[ -f "$PIDFILE" ]]; then
     local pid
     pid="$(cat "$PIDFILE")"
@@ -29,13 +32,35 @@ stop_portal() {
     fi
     rm -f "$PIDFILE"
   fi
+  # Belt and braces: anything still holding the port is a portal we started.
+  local holder
+  holder="$(pgrep -f "node .*packages/server/dist/main.js" || true)"
+  for pid in $holder; do
+    kill -TERM "$pid" 2>/dev/null || true
+  done
+  for _ in $(seq 1 20); do
+    curl -sf -o /dev/null "http://localhost:${MIBLOX_PORT}/api/games" || return 0
+    sleep 0.25
+  done
+  for pid in $holder; do
+    kill -KILL "$pid" 2>/dev/null || true
+  done
 }
 
 start_portal() {
   mkdir -p "${ROOT}/data"
   setsid nohup node "${ROOT}/packages/server/dist/main.js" >"$LOGFILE" 2>&1 </dev/null &
-  echo $! >"$PIDFILE"
+  local pid=$!
+  echo "$pid" >"$PIDFILE"
   for _ in $(seq 1 40); do
+    # Check the process we just started is the one answering: a portal left
+    # over from a previous run answers just as happily, and a restart that
+    # accepts that answer serves a stale build for the rest of the session.
+    if ! kill -0 "$pid" 2>/dev/null; then
+      echo "portal exited on startup; last log lines:" >&2
+      tail -20 "$LOGFILE" >&2
+      return 1
+    fi
     if curl -sf -o /dev/null "http://localhost:${MIBLOX_PORT}/api/games"; then
       echo "portal up on http://localhost:${MIBLOX_PORT}"
       return 0

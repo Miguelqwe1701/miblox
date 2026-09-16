@@ -4,6 +4,142 @@ import type { InputState } from "./controls.js";
 
 export type CameraMode = "ThirdPerson" | "FirstPerson";
 
+export type Vec3 = [number, number, number];
+
+/**
+ * One scripted camera move.
+ *
+ * Roblox calls this a Scriptable camera; the idea is the same. A shot says
+ * where the camera starts and ends and how long it takes, and the director
+ * eases between the two. Nothing here touches player input, so a cutscene can
+ * run over a character the player is still driving.
+ */
+export interface CameraShot {
+  /** Seconds the move takes. */
+  duration: number;
+  /** Camera position, at the start and the end of the shot. */
+  eye: [Vec3, Vec3];
+  /** What the camera looks at, at the start and the end. */
+  target: [Vec3, Vec3];
+  /**
+   * Track a part: `eye` and `target` become offsets from it rather than
+   * fixed world points, so the shot stays framed on a moving character.
+   */
+  follow?: BasePart | null;
+  /** Swing around the target instead of sliding in a straight line. */
+  orbit?: boolean;
+  /** Field of view at the start and the end, for a push-in or pull-back. */
+  fov?: [number, number];
+  ease?: "linear" | "inOut" | "out";
+}
+
+const EASINGS: Record<string, (t: number) => number> = {
+  linear: (t) => t,
+  inOut: (t) => t * t * (3 - 2 * t),
+  out: (t) => 1 - (1 - t) ** 3,
+};
+
+const vec = (v: Vec3) => new THREE.Vector3(v[0], v[1], v[2]);
+
+/**
+ * Plays a list of shots, one after another.
+ *
+ * Kept apart from the follow camera so the two never fight: while a sequence
+ * is playing the rig hands the camera over wholesale, and takes it back when
+ * the last shot ends.
+ */
+export class CinematicDirector {
+  private queue: CameraShot[] = [];
+  private elapsed = 0;
+  private onDone: (() => void) | null = null;
+
+  get active(): boolean {
+    return this.queue.length > 0;
+  }
+
+  /** Starts a sequence, replacing anything already playing. */
+  play(shots: CameraShot[]): Promise<void> {
+    this.queue = shots.slice();
+    this.elapsed = 0;
+    return new Promise((resolve) => {
+      this.onDone = resolve;
+    });
+  }
+
+  stop(): void {
+    this.queue = [];
+    this.elapsed = 0;
+    const done = this.onDone;
+    this.onDone = null;
+    done?.();
+  }
+
+  /** Advances the sequence and points the camera. Returns false when idle. */
+  update(camera: THREE.PerspectiveCamera, dt: number): boolean {
+    const shot = this.queue[0];
+    if (!shot) return false;
+    this.elapsed += dt;
+
+    const raw = shot.duration > 0 ? Math.min(this.elapsed / shot.duration, 1) : 1;
+    const t = (EASINGS[shot.ease ?? "inOut"] ?? EASINGS.inOut)(raw);
+
+    // A followed part turns the shot's points into offsets from wherever it
+    // is right now, so the framing holds as the subject moves.
+    const anchor = shot.follow
+      ? new THREE.Vector3(
+          shot.follow.CFrame.position.x,
+          shot.follow.CFrame.position.y,
+          shot.follow.CFrame.position.z,
+        )
+      : new THREE.Vector3();
+
+    const target = vec(shot.target[0]).lerp(vec(shot.target[1]), t).add(anchor);
+    let eye: THREE.Vector3;
+    if (shot.orbit) {
+      // Interpolating the angle rather than the position keeps the camera at
+      // a constant distance, so an orbit sweeps round instead of cutting
+      // across the middle of the subject.
+      const a = vec(shot.eye[0]).add(anchor).sub(target);
+      const b = vec(shot.eye[1]).add(anchor).sub(target);
+      const angleA = Math.atan2(a.x, a.z);
+      let sweep = Math.atan2(b.x, b.z) - angleA;
+      while (sweep > Math.PI) sweep -= Math.PI * 2;
+      while (sweep < -Math.PI) sweep += Math.PI * 2;
+      const angle = angleA + sweep * t;
+      const radiusA = Math.hypot(a.x, a.z);
+      const radius = radiusA + (Math.hypot(b.x, b.z) - radiusA) * t;
+      eye = new THREE.Vector3(
+        target.x + Math.sin(angle) * radius,
+        target.y + a.y + (b.y - a.y) * t,
+        target.z + Math.cos(angle) * radius,
+      );
+    } else {
+      eye = vec(shot.eye[0]).lerp(vec(shot.eye[1]), t).add(anchor);
+    }
+
+    camera.position.copy(eye);
+    camera.lookAt(target);
+    if (shot.fov) {
+      const fov = shot.fov[0] + (shot.fov[1] - shot.fov[0]) * t;
+      if (camera.fov !== fov) {
+        camera.fov = fov;
+        camera.updateProjectionMatrix();
+      }
+    }
+
+    if (raw >= 1) {
+      this.queue.shift();
+      this.elapsed = 0;
+      if (this.queue.length === 0) {
+        const done = this.onDone;
+        this.onDone = null;
+        done?.();
+      }
+    }
+    return true;
+  }
+}
+
 /**
  * Follows the local character.
  *
@@ -22,6 +158,8 @@ export class CameraRig {
   pitch = -0.25;
   /** Smoothed focus point, so the view does not jitter with the character. */
   private focus = new THREE.Vector3(0, 20, 0);
+  /** Scripted camera moves. While one is playing it owns the camera. */
+  readonly cinematic = new CinematicDirector();
 
   constructor(
     aspect: number,
@@ -37,6 +175,9 @@ export class CameraRig {
   }
 
   update(input: InputState, root: BasePart | null, dt: number): void {
+    // A scripted shot takes the camera over completely, but the player keeps
+    // control of their character: the trailer walks while the camera swoops.
+    if (this.cinematic.update(this.camera, dt)) return;
     this.yaw = input.lookYaw;
     this.pitch = input.lookPitch;
     if (input.zoom) {

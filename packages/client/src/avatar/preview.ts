@@ -1,10 +1,13 @@
 import * as THREE from "three";
 import {
+  BasePart,
   DataModel,
   PhysicsWorld,
   Vector3,
   applyDescriptionTo,
+  applyPose,
   buildAvatar,
+  poseFor,
   type HumanoidDescriptionData,
   type Model,
 } from "@miblox/core";
@@ -24,6 +27,8 @@ export class AvatarPreview {
   private readonly worldView: WorldView;
   private character: Model;
   private angle = 0.6;
+  /** Elapsed time, so the idle animation reads as breathing rather than a loop. */
+  private clock = 0;
   private dragging = false;
   private lastX = 0;
   /** Paused while the tab is hidden, so a background tab costs nothing. */
@@ -114,6 +119,11 @@ export class AvatarPreview {
     const tick = (): void => {
       // Turning slowly on its own reads as a display; dragging takes over.
       if (this.spinning && !this.dragging) this.angle += 0.004;
+      // The same idle animation the game plays, so the editor is not showing a
+      // stiffer character than the one you get in a world.
+      this.clock += 1 / 60;
+      const root = this.character.FindFirstChild("HumanoidRootPart") as BasePart | null;
+      if (root) applyPose(this.character, root, poseFor("Running", 0, 16, 0, this.clock));
       const radius = 13;
       this.camera.position.set(
         Math.sin(this.angle) * radius,

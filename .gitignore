@@ -5,3 +5,5 @@ build/
 .DS_Store
 .vite/
 out/
+data/portal.pid
+data/portal.log

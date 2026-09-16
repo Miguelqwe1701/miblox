@@ -349,3 +349,27 @@ button.ghost:hover { border-color: var(--accent); }
   tab-size: 4;
 }
 .plugin-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+
+/* What /studio shows when the URL names no world. */
+.world-picker {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  color: var(--text);
+}
+.world-picker h2 { margin: 0 0 0.4rem; font-size: 1.3rem; font-weight: 600; }
+.world-picker a {
+  min-width: 15rem;
+  padding: 0.7rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+  background: var(--panel);
+  color: inherit;
+  text-align: center;
+  text-decoration: none;
+}
+.world-picker a:hover { border-color: var(--accent, #5b8cff); }

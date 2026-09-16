@@ -2,6 +2,7 @@ import { HOTBAR, type HotbarSlot } from "./hotbar.js";
 import type { Settings } from "./settings.js";
 import type { Platform } from "./controls.js";
 import type { Connection } from "./net.js";
+import { escapeHtml } from "./escape.js";
 
 export interface GameSummary {
   id: string;
@@ -430,12 +431,6 @@ export class Hud {
   }
 
   private toastTimer = 0;
-}
-
-function escapeHtml(text: string): string {
-  return String(text).replace(/[&<>"']/g, (c) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c,
-  );
 }
 
 function initials(name: string): string {
