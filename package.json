@@ -18,7 +18,6 @@
   "scripts": {
     "build": "npm run build -w @miblox/wasm && npm run build -w @miblox/core && npm run build -w @miblox/luau && npm run build -w @miblox/scripting && npm run build -w @miblox/auth && npm run build -w @miblox/server && npm run build -w @miblox/client",
     "test": "npm run test -w @miblox/core && npm run test -w @miblox/luau && npm run test -w @miblox/wasm && npm run test -w @miblox/scripting && npm run test -w @miblox/auth && npm run test -w @miblox/server",
-    "typecheck": "npm run typecheck -w @miblox/client",
     "dev:client": "npm run dev -w @miblox/client",
     "dev:desktop": "npm run start -w @miblox/desktop",
     "start": "node packages/server/dist/main.js",

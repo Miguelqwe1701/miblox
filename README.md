@@ -172,7 +172,7 @@ the Migood identity is what it is *linked* to. See
 
 ```bash
 npm test
-npm run typecheck   # the client; the other packages are type-checked by their build
+npm run typecheck -w @miblox/client   # the other packages are type-checked by their build
 ```
 
 Around 260 tests across the packages, covering the instance tree, terrain and
