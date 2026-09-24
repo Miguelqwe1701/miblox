@@ -19,15 +19,10 @@ jobs:
       - run: npm ci
 
       # Builds every package, including compiling the mesher to WebAssembly
-      # with AssemblyScript. This has to come first: the client resolves the
-      # other workspace packages through the .d.ts files their builds emit.
+      # with AssemblyScript. The client's build type-checks it before Vite
+      # bundles it, so a client type error fails this step.
       - name: Build
         run: npm run build
-
-      # The client is bundled by Vite, which strips types without checking
-      # them, so its type errors only surface here.
-      - name: Typecheck the client
-        run: npm run typecheck
 
       - name: Test
         run: npm test
