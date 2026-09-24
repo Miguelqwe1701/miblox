@@ -10,6 +10,7 @@ it is and why it is built that way; this file is about working on it.
 ```bash
 npm install
 npm run build        # wasm → core → luau → scripting → auth → server → client
+npm run typecheck    # the client alone; every other package's build does it
 npm test             # ~300 tests across six packages
 npm start            # portal on http://localhost:3000
 npm run place:build  # regenerates places/*.json (they are committed)
@@ -25,15 +26,17 @@ clone fails until `npm run build` has run. The SessionStart hook in
 resolve it through the `.d.ts` its build emits, and the client copies
 `miblox.wasm` into `public/` in its prebuild step.
 
-**Typecheck the client separately.** Vite strips types without checking them,
-so unless the client's own build script runs `tsc` first, `npm run build`
-accepts a type error in `packages/client` and it only surfaces at runtime:
+**The client's build type-checks it.** Vite strips types without checking
+them, so `tsc` is wired into `packages/client`'s build script ahead of the
+bundle - without that a type error there passes the build and only surfaces at
+runtime. Leave it there. To check types on their own, without bundling:
 
 ```bash
-npx tsc --noEmit -p packages/client/tsconfig.json
+npm run typecheck
 ```
 
-There is no linter configured.
+The other packages are built by `tsc`, so their builds already type-check
+them. There is no linter configured.
 
 ## Verify changes by running the thing
 
