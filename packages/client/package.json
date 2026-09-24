@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "npm run prebuild && vite build",
+    "build": "npm run prebuild && npm run typecheck && vite build",
+    "typecheck": "tsc -p tsconfig.json",
     "dev": "npm run prebuild && vite",
     "preview": "vite preview",
     "prebuild": "node -e \"const fs=require('fs');fs.mkdirSync('public',{recursive:true});fs.copyFileSync(require.resolve('@miblox/wasm/miblox.wasm'),'public/miblox.wasm')\""
