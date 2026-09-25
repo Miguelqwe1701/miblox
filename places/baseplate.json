@@ -536,7 +536,7 @@
       "props": {},
       "children": [
         {
-          "id": "i20",
+          "id": "i25",
           "className": "ModuleScript",
           "name": "Settings",
           "props": {
@@ -613,7 +613,141 @@
       "id": "i1g",
       "className": "StarterGui",
       "name": "StarterGui",
-      "props": {}
+      "props": {},
+      "children": [
+        {
+          "id": "i20",
+          "className": "ScreenGui",
+          "name": "WelcomeGui",
+          "props": {
+            "Enabled": true,
+            "ResetOnSpawn": true,
+            "DisplayOrder": 0
+          },
+          "children": [
+            {
+              "id": "i21",
+              "className": "Frame",
+              "name": "Panel",
+              "props": {
+                "Position": [
+                  1,
+                  -16,
+                  0,
+                  16
+                ],
+                "Size": [
+                  0,
+                  220,
+                  0,
+                  96
+                ],
+                "AnchorPoint": [
+                  1,
+                  0
+                ],
+                "BackgroundColor3": 1185826,
+                "BackgroundTransparency": 0.25,
+                "BorderColor3": 1780277,
+                "BorderSizePixel": 0,
+                "Rotation": 0,
+                "Visible": true,
+                "ZIndex": 1
+              },
+              "children": [
+                {
+                  "id": "i22",
+                  "className": "TextLabel",
+                  "name": "Count",
+                  "props": {
+                    "Position": [
+                      0,
+                      12,
+                      0,
+                      8
+                    ],
+                    "Size": [
+                      1,
+                      -24,
+                      0,
+                      32
+                    ],
+                    "AnchorPoint": [
+                      0,
+                      0
+                    ],
+                    "BackgroundColor3": 16777215,
+                    "BackgroundTransparency": 1,
+                    "BorderColor3": 1780277,
+                    "BorderSizePixel": 1,
+                    "Rotation": 0,
+                    "Visible": true,
+                    "ZIndex": 1,
+                    "Text": "Clicks: 0",
+                    "TextColor3": 15462648,
+                    "TextSize": 18,
+                    "TextTransparency": 0,
+                    "TextScaled": false,
+                    "TextWrapped": false,
+                    "TextXAlignment": "Left",
+                    "TextYAlignment": "Center"
+                  }
+                },
+                {
+                  "id": "i23",
+                  "className": "TextButton",
+                  "name": "ClickMe",
+                  "props": {
+                    "Position": [
+                      0,
+                      12,
+                      1,
+                      -48
+                    ],
+                    "Size": [
+                      1,
+                      -24,
+                      0,
+                      36
+                    ],
+                    "AnchorPoint": [
+                      0,
+                      0
+                    ],
+                    "BackgroundColor3": 7320831,
+                    "BackgroundTransparency": 0,
+                    "BorderColor3": 1780277,
+                    "BorderSizePixel": 0,
+                    "Rotation": 0,
+                    "Visible": true,
+                    "ZIndex": 1,
+                    "Text": "Click me",
+                    "TextColor3": 332319,
+                    "TextSize": 16,
+                    "TextTransparency": 0,
+                    "TextScaled": false,
+                    "TextWrapped": false,
+                    "TextXAlignment": "Center",
+                    "TextYAlignment": "Center",
+                    "AutoButtonColor": true,
+                    "Modal": false
+                  }
+                }
+              ]
+            },
+            {
+              "id": "i24",
+              "className": "LocalScript",
+              "name": "Counter",
+              "props": {
+                "Source": "-- Runs on each player's own client, inside their copy of WelcomeGui.\nlocal panel = script.Parent.Panel\nlocal clicks = 0\n\npanel.ClickMe.MouseButton1Click:Connect(function()\n\tclicks += 1\n\tpanel.Count.Text = \"Clicks: \" .. clicks\nend)\n",
+                "Enabled": true,
+                "RunContext": "Legacy"
+              }
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "i1h",

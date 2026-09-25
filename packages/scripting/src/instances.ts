@@ -14,6 +14,8 @@ import {
   BindableEvent,
   Signal,
   Terrain,
+  UDim,
+  UDim2,
   Vector2,
   Vector3,
   Workspace,
@@ -46,6 +48,8 @@ import {
   isWrapped,
   wrapCFrame,
   wrapColor3,
+  wrapUDim,
+  wrapUDim2,
   wrapValue,
   wrapVector2,
   wrapVector3,
@@ -94,6 +98,8 @@ export class InstanceBridge {
     if (value instanceof Vector2) return wrapVector2(value);
     if (value instanceof CFrame) return wrapCFrame(value);
     if (value instanceof Color3) return wrapColor3(value);
+    if (value instanceof UDim2) return wrapUDim2(value);
+    if (value instanceof UDim) return wrapUDim(value);
     if (value instanceof EngineInstance) return this.wrapInstance(value);
     if (value instanceof Signal) return this.wrapSignal(value as Signal<never>);
     if (Array.isArray(value)) return LuaTable.fromArray(value.map((v) => this.toLua(v)));
@@ -117,6 +123,7 @@ export class InstanceBridge {
     if (isWrapped(value, "Vector3")) return asVector3(value);
     if (isWrapped(value, "CFrame")) return asCFrame(value);
     if (isWrapped(value, "Color3")) return asColor3(value);
+    if (isWrapped(value, "UDim2") || isWrapped(value, "UDim")) return (value as LuaUserdata).value;
     if (isWrapped(value, "Vector2") || isWrapped(value, "userdata")) {
       return (value as LuaUserdata).value;
     }

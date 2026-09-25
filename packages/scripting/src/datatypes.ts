@@ -1,4 +1,4 @@
-import { CFrame, Color3, Vector2, Vector3 } from "@miblox/core";
+import { CFrame, Color3, UDim, UDim2, Vector2, Vector3 } from "@miblox/core";
 import {
   LuaError,
   LuaTable,
@@ -51,6 +51,8 @@ export const wrapVector3 = (v: Vector3): LuaUserdata => wrapValue("Vector3", v);
 export const wrapVector2 = (v: Vector2): LuaUserdata => wrapValue("Vector2", v);
 export const wrapCFrame = (v: CFrame): LuaUserdata => wrapValue("CFrame", v);
 export const wrapColor3 = (v: Color3): LuaUserdata => wrapValue("Color3", v);
+export const wrapUDim = (v: UDim): LuaUserdata => wrapValue("UDim", v);
+export const wrapUDim2 = (v: UDim2): LuaUserdata => wrapValue("UDim2", v);
 
 export function asVector3(v: LuaValue, where = "argument"): Vector3 {
   return expect(v, "Vector3", Vector3, where);
@@ -60,6 +62,15 @@ export function asCFrame(v: LuaValue, where = "argument"): CFrame {
 }
 export function asColor3(v: LuaValue, where = "argument"): Color3 {
   return expect(v, "Color3", Color3, where);
+}
+export function asVector2(v: LuaValue, where = "argument"): Vector2 {
+  return expect(v, "Vector2", Vector2, where);
+}
+export function asUDim(v: LuaValue, where = "argument"): UDim {
+  return expect(v, "UDim", UDim, where);
+}
+export function asUDim2(v: LuaValue, where = "argument"): UDim2 {
+  return expect(v, "UDim2", UDim2, where);
 }
 
 function num(v: LuaValue, fallback = 0): number {
@@ -72,6 +83,8 @@ export function installDatatypes(globals: LuaTable): void {
   installVector2(globals);
   installCFrame(globals);
   installColor3(globals);
+  installUDim(globals);
+  installUDim2(globals);
 }
 
 function installVector3(globals: LuaTable): void {
@@ -449,6 +462,87 @@ function installColor3(globals: LuaTable): void {
   );
   lib.frozen = true;
   globals.set("Color3", lib);
+}
+
+function installUDim(globals: LuaTable): void {
+  const mt = metatableFor("UDim");
+  mt.set(
+    "__index",
+    nativeFn("UDim.__index", (args) => {
+      const u = asUDim(args[0]);
+      switch (args[1]) {
+        case "Scale": return [u.scale];
+        case "Offset": return [u.offset];
+        default:
+          throw new LuaError(`${String(args[1])} is not a valid member of UDim`);
+      }
+    }),
+  );
+  mt.set("__add", nativeFn("UDim.__add", (a) => [wrapUDim(asUDim(a[0], "UDim +").add(asUDim(a[1], "UDim +")))]));
+  mt.set("__sub", nativeFn("UDim.__sub", (a) => [wrapUDim(asUDim(a[0], "UDim -").sub(asUDim(a[1], "UDim -")))]));
+  mt.set(
+    "__eq",
+    nativeFn("UDim.__eq", (a) => {
+      if (!isWrapped(a[0], "UDim") || !isWrapped(a[1], "UDim")) return [false];
+      const x = asUDim(a[0]);
+      const y = asUDim(a[1]);
+      return [x.scale === y.scale && x.offset === y.offset];
+    }),
+  );
+  mt.set("__tostring", nativeFn("UDim.__tostring", (a) => [asUDim(a[0]).toString()]));
+
+  const lib = new LuaTable();
+  lib.set("new", nativeFn("UDim.new", (a) => [wrapUDim(new UDim(num(a[0]), num(a[1])))]));
+  lib.frozen = true;
+  globals.set("UDim", lib);
+}
+
+function installUDim2(globals: LuaTable): void {
+  const mt = metatableFor("UDim2");
+  mt.set(
+    "__index",
+    nativeFn("UDim2.__index", (args) => {
+      const u = asUDim2(args[0]);
+      switch (args[1]) {
+        case "X": case "Width": return [wrapUDim(u.x)];
+        case "Y": case "Height": return [wrapUDim(u.y)];
+        case "Lerp":
+          return [
+            nativeFn("Lerp", (a) => [
+              wrapUDim2(asUDim2(a[0]).lerp(asUDim2(a[1], "UDim2:Lerp"), num(a[2]))),
+            ]),
+          ];
+        default:
+          throw new LuaError(`${String(args[1])} is not a valid member of UDim2`);
+      }
+    }),
+  );
+  mt.set("__add", nativeFn("UDim2.__add", (a) => [wrapUDim2(asUDim2(a[0], "UDim2 +").add(asUDim2(a[1], "UDim2 +")))]));
+  mt.set("__sub", nativeFn("UDim2.__sub", (a) => [wrapUDim2(asUDim2(a[0], "UDim2 -").sub(asUDim2(a[1], "UDim2 -")))]));
+  mt.set(
+    "__eq",
+    nativeFn("UDim2.__eq", (a) => {
+      if (!isWrapped(a[0], "UDim2") || !isWrapped(a[1], "UDim2")) return [false];
+      return [asUDim2(a[0]).toArray().join() === asUDim2(a[1]).toArray().join()];
+    }),
+  );
+  mt.set("__tostring", nativeFn("UDim2.__tostring", (a) => [asUDim2(a[0]).toString()]));
+
+  const lib = new LuaTable();
+  lib.set(
+    "new",
+    nativeFn("UDim2.new", (a) => {
+      // UDim2.new(UDim, UDim) as well as the four-number form.
+      if (isWrapped(a[0], "UDim")) {
+        return [wrapUDim2(new UDim2(asUDim(a[0]), asUDim(a[1], "UDim2.new")))];
+      }
+      return [wrapUDim2(UDim2.new(num(a[0]), num(a[1]), num(a[2]), num(a[3])))];
+    }),
+  );
+  lib.set("fromScale", nativeFn("UDim2.fromScale", (a) => [wrapUDim2(UDim2.fromScale(num(a[0]), num(a[1])))]));
+  lib.set("fromOffset", nativeFn("UDim2.fromOffset", (a) => [wrapUDim2(UDim2.fromOffset(num(a[0]), num(a[1])))]));
+  lib.frozen = true;
+  globals.set("UDim2", lib);
 }
 
 /** Formats a number the way Lua's tostring would, for error messages. */

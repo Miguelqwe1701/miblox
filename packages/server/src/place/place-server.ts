@@ -14,7 +14,9 @@ import {
   encodeChunkRLE,
   isEmptyDelta,
   applyDescriptionTo,
+  copyStarterGui,
   loadCharacterFor,
+  playerGuiOf,
   type HumanoidDescriptionData,
   MATERIAL_ID,
   PROTOCOL_VERSION,
@@ -276,6 +278,9 @@ export class PlaceServer {
     player.kickHandler = (reason) => connection.close(reason || "You were kicked");
     player.loadCharacterHandler = () => this.spawnCharacter(player);
     player.setParent(this.game.Players);
+    // Exists from the start so a LocalScript can WaitForChild it even in a
+    // place that never spawns a character.
+    playerGuiOf(player);
 
     const session: PlayerSession = {
       connection,
@@ -355,6 +360,9 @@ export class PlaceServer {
       if (description) applyDescriptionTo(character, description);
     }
     character.setParent(this.game.Workspace);
+    // Roblox hands out StarterGui on every spawn, which is what resets a
+    // ResetOnSpawn GUI when the player dies.
+    copyStarterGui(player, this.game.FindService("StarterGui"));
 
     const root = character.FindFirstChild("HumanoidRootPart") as BasePart;
     // Handing the player their own character removes a round trip from every

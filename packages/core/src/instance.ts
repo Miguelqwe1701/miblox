@@ -1,11 +1,13 @@
 import { Signal, type Connection } from "./signal.js";
-import { CFrame, Color3, Vector3 } from "./math.js";
+import { CFrame, Color3, UDim2, Vector2, Vector3 } from "./math.js";
 
 export type PropKind =
   | "number"
   | "string"
   | "boolean"
   | "Vector3"
+  | "Vector2"
+  | "UDim2"
   | "CFrame"
   | "Color3"
   | "enum"
@@ -368,6 +370,10 @@ export function encodeValue(kind: PropKind, value: unknown): unknown {
   switch (kind) {
     case "Vector3":
       return (value as Vector3).toArray();
+    case "Vector2":
+      return [(value as Vector2).x, (value as Vector2).y];
+    case "UDim2":
+      return (value as UDim2).toArray();
     case "CFrame":
       return (value as CFrame).toComponents();
     case "Color3":
@@ -383,6 +389,10 @@ export function decodeValue(kind: PropKind, raw: unknown): unknown {
   switch (kind) {
     case "Vector3":
       return Vector3.fromArray(raw as number[]);
+    case "Vector2":
+      return new Vector2((raw as number[])[0], (raw as number[])[1]);
+    case "UDim2":
+      return UDim2.fromArray(raw as number[]);
     case "CFrame":
       return CFrame.fromComponents(raw as number[]);
     case "Color3":
