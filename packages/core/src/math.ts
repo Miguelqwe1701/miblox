@@ -103,6 +103,66 @@ export class Vector2 {
   }
 }
 
+/** One axis of a GUI measurement: a fraction of the parent plus pixels. */
+export class UDim {
+  constructor(readonly scale = 0, readonly offset = 0) {}
+  add(o: UDim): UDim {
+    return new UDim(this.scale + o.scale, this.offset + o.offset);
+  }
+  sub(o: UDim): UDim {
+    return new UDim(this.scale - o.scale, this.offset - o.offset);
+  }
+  /** Resolves against a parent length in pixels. */
+  resolve(parentPixels: number): number {
+    return this.scale * parentPixels + this.offset;
+  }
+  toString(): string {
+    return `${this.scale}, ${this.offset}`;
+  }
+}
+
+/**
+ * A GUI position or size. Scale is relative to the parent, so a HUD laid out
+ * in scale fits a phone and a monitor alike; offset is in pixels.
+ */
+export class UDim2 {
+  static readonly zero = new UDim2(new UDim(), new UDim());
+  constructor(readonly x: UDim = new UDim(), readonly y: UDim = new UDim()) {}
+  static new(xScale: number, xOffset: number, yScale: number, yOffset: number): UDim2 {
+    return new UDim2(new UDim(xScale, xOffset), new UDim(yScale, yOffset));
+  }
+  static fromScale(x: number, y: number): UDim2 {
+    return UDim2.new(x, 0, y, 0);
+  }
+  static fromOffset(x: number, y: number): UDim2 {
+    return UDim2.new(0, x, 0, y);
+  }
+  add(o: UDim2): UDim2 {
+    return new UDim2(this.x.add(o.x), this.y.add(o.y));
+  }
+  sub(o: UDim2): UDim2 {
+    return new UDim2(this.x.sub(o.x), this.y.sub(o.y));
+  }
+  lerp(o: UDim2, a: number): UDim2 {
+    const l = (p: number, q: number) => p + (q - p) * a;
+    return UDim2.new(
+      l(this.x.scale, o.x.scale),
+      l(this.x.offset, o.x.offset),
+      l(this.y.scale, o.y.scale),
+      l(this.y.offset, o.y.offset),
+    );
+  }
+  toArray(): [number, number, number, number] {
+    return [this.x.scale, this.x.offset, this.y.scale, this.y.offset];
+  }
+  static fromArray(a: readonly number[]): UDim2 {
+    return UDim2.new(a[0] ?? 0, a[1] ?? 0, a[2] ?? 0, a[3] ?? 0);
+  }
+  toString(): string {
+    return `{${this.x}}, {${this.y}}`;
+  }
+}
+
 export class Color3 {
   constructor(readonly r = 0, readonly g = 0, readonly b = 0) {}
   static fromRGB(r: number, g: number, b: number): Color3 {

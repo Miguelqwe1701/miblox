@@ -13,8 +13,10 @@ every client, so there is one language and one API surface to learn.
 
 A `Script` under `ServerScriptService`, `Workspace` or `ReplicatedStorage`
 runs when the world starts. A `LocalScript` under
-`StarterPlayer.StarterPlayerScripts` runs on each client that joins, and one
-under `StarterCharacterScripts` is copied into every character.
+`StarterPlayer.StarterPlayerScripts` runs on each client that joins, one
+under `StarterCharacterScripts` is copied into every character, and one inside
+a GUI in `StarterGui` runs on each client from its copy in that player's
+`PlayerGui`. Destroying a script stops it.
 
 Server script source is never sent to clients. `LocalScript` and
 `ModuleScript` source is, because it has to be.
@@ -47,7 +49,8 @@ end
 
 ### Values
 
-`Vector3`, `Vector2`, `CFrame` and `Color3`, with the operators you expect:
+`Vector3`, `Vector2`, `CFrame`, `Color3`, `UDim` and `UDim2`, with the
+operators you expect:
 
 ```lua
 local a = Vector3.new(1, 2, 3) + Vector3.new(4, 5, 6)
@@ -132,6 +135,41 @@ character:FindFirstChildOfClass("Humanoid"):ApplyDescription(look)
 A place can ship its own rig as a `Model` named `StarterCharacter` under
 `StarterPlayer`, and it is cloned for each player instead of the default.
 
+### GUIs
+
+`ScreenGui`, `Frame`, `TextLabel`, `TextButton` and `ImageLabel`, laid out with
+`UDim2` the way Roblox lays them out: scale is a fraction of the parent, offset
+is pixels, and `AnchorPoint` says which point of the object sits at
+`Position`.
+
+Put a `ScreenGui` in `StarterGui` and every player gets a copy in their
+`PlayerGui` each time their character spawns. A `ScreenGui` with
+`ResetOnSpawn = false` is given once and kept, so its state survives dying. A
+`LocalScript` inside it runs on that player's client:
+
+```lua
+-- LocalScript inside StarterGui.ShopGui
+local panel = script.Parent.Panel
+local buy = game:GetService("ReplicatedStorage"):WaitForChild("Buy")
+
+panel.BuyButton.MouseButton1Click:Connect(function()
+	buy:FireServer("Sword")
+end)
+```
+
+Clicks happen on the client that clicked, as in Roblox, so tell the server
+with a `RemoteEvent`. A server `Script` can edit a player's GUI directly,
+through `player.PlayerGui`, and the change replicates:
+
+```lua
+player.PlayerGui.ShopGui.Panel.Coins.Text = "Coins: " .. coins
+```
+
+The mouse is captured for the camera once you click the world. Press **Alt**
+to free it and click a button, or set `Modal = true` on a button to keep the
+mouse free while that button is on screen. A `LocalScript` can also build a GUI
+with `Instance.new`; that GUI exists only on that client.
+
 ### Remotes
 
 ```lua
@@ -155,8 +193,10 @@ game:GetService("ReplicatedStorage"):WaitForChild("Paint"):FireServer(position)
 
 Honest list, so nothing surprises you:
 
-- **GUI instances.** No `ScreenGui`, `TextLabel` and so on. The HUD is part of
-  the client rather than something a place builds.
+- **More GUI.** No `ScrollingFrame`, `TextBox`, `ImageButton`, layouts
+  (`UIListLayout` and friends), `ClipsDescendants`, fonts or `ImageColor3`
+  tinting yet. GUIs are not drawn in VR or in Studio's test client, and every
+  player's `PlayerGui` replicates to every client rather than only its owner.
 - **Tools and backpacks.** `StarterPack` exists as a container; nothing
   equips from it yet.
 - **Animations.** Rigs have `Motor6D` joints and the client interpolates part

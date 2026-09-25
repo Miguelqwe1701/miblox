@@ -3,6 +3,8 @@ import {
   DataModel,
   Instance as EngineInstance,
   Material,
+  TextXAlignment,
+  TextYAlignment,
   PhysicsWorld,
   KeyCode,
   HumanoidStateType,
@@ -94,7 +96,13 @@ export class ScriptEnvironment {
     return this.vm.interp.load(script.Source, script.GetFullName(), scope);
   }
 
-  /** Compiles and queues a script to run on its own thread. */
+  /**
+   * Compiles and queues a script to run on its own thread.
+   *
+   * Destroying the script stops that thread, as in Roblox, so a GUI that is
+   * replaced on respawn does not leave its old script's loop running beside
+   * the new one.
+   */
   runScript(script: BaseScript): void {
     let fn: LuaFunction;
     try {
@@ -103,7 +111,11 @@ export class ScriptEnvironment {
       this.opts.onError?.(String((err as Error).message ?? err), script.GetFullName());
       return;
     }
-    this.vm.scheduler.spawn(fn, []);
+    const thread = this.vm.scheduler.spawn(fn, []);
+    const conn = script.Destroying.Connect(() => {
+      conn.Disconnect();
+      this.vm.scheduler.cancel(thread);
+    });
   }
 
   /**
@@ -168,6 +180,8 @@ function buildEnumTable(): LuaTable {
   addEnum("KeyCode", Object.keys(KeyCode));
   addEnum("UserInputType", Object.keys(UserInputType));
   addEnum("UserInputState", ["Begin", "Change", "End"]);
+  addEnum("TextXAlignment", Object.keys(TextXAlignment));
+  addEnum("TextYAlignment", Object.keys(TextYAlignment));
   addEnum("RunContext", ["Server", "Client", "Legacy"]);
   addEnum("CameraType", ["Custom", "Scriptable", "Follow", "Attach", "Fixed"]);
   addEnum("CameraMode", ["Classic", "LockFirstPerson"]);

@@ -4,6 +4,8 @@ import {
   Vector3,
   CFrame,
   Color3,
+  UDim2,
+  Vector2,
   getClassSchema,
 } from "@miblox/core";
 
@@ -12,6 +14,7 @@ export const INSERTABLE: Array<{ group: string; classes: string[] }> = [
   { group: "Parts", classes: ["Part", "WedgePart", "SpawnLocation"] },
   { group: "Containers", classes: ["Model", "Folder", "Configuration"] },
   { group: "Scripts", classes: ["Script", "LocalScript", "ModuleScript"] },
+  { group: "GUI", classes: ["ScreenGui", "Frame", "TextLabel", "TextButton", "ImageLabel"] },
   { group: "Events", classes: ["RemoteEvent", "RemoteFunction", "BindableEvent"] },
   {
     group: "Values",
@@ -221,6 +224,23 @@ export class Properties {
             this.colorRow(key, value as Color3, (next) => this.set(key, next)),
           );
           break;
+        case "UDim2":
+          this.element.appendChild(
+            this.numbersRow(
+              key,
+              (value as UDim2).toArray(),
+              ["X scale", "X offset", "Y scale", "Y offset"],
+              (n) => this.set(key, UDim2.fromArray(n)),
+            ),
+          );
+          break;
+        case "Vector2":
+          this.element.appendChild(
+            this.numbersRow(key, [(value as Vector2).x, (value as Vector2).y], ["X", "Y"], (n) =>
+              this.set(key, new Vector2(n[0], n[1])),
+            ),
+          );
+          break;
         default:
           break;
       }
@@ -306,6 +326,28 @@ export class Properties {
       inputs.push(input);
       field.appendChild(input);
     }
+    return row;
+  }
+
+  /** A row of number fields edited together, for UDim2 and Vector2. */
+  private numbersRow(
+    label: string,
+    values: number[],
+    titles: string[],
+    apply: (values: number[]) => void,
+  ): HTMLElement {
+    const { row, field } = this.row(label);
+    field.classList.add("vector");
+    const inputs = values.map((value, i) => {
+      const input = document.createElement("input");
+      input.type = "number";
+      input.step = "any";
+      input.title = titles[i];
+      input.value = String(round(value));
+      input.addEventListener("change", () => apply(inputs.map((el) => Number(el.value) || 0)));
+      field.appendChild(input);
+      return input;
+    });
     return row;
   }
 

@@ -6,6 +6,12 @@ import {
   Color3,
   DataModel,
   Vector3,
+  Vector2,
+  UDim2,
+  type Frame,
+  type ScreenGui,
+  type TextButton,
+  type TextLabel,
   createInstance,
   serializePlace,
   type SerializedPlace,
@@ -204,6 +210,8 @@ export function buildStarterPlace(): SerializedPlace {
   clientScript.Name = "ClientMain";
   (clientScript as unknown as { Source: string }).Source = CLIENT_SCRIPT;
 
+  buildStarterGui(game);
+
   const settings = createInstance("ModuleScript", game.GetService("ReplicatedStorage"));
   settings.Name = "Settings";
   (settings as unknown as { Source: string }).Source = MODULE_SCRIPT;
@@ -220,6 +228,64 @@ export function buildStarterPlace(): SerializedPlace {
     } as Partial<SerializedPlace>),
   };
 }
+
+/**
+ * A small panel with a button, so the starter place shows off a GUI built the
+ * way a Roblox place builds one: instances in StarterGui and a LocalScript.
+ */
+function buildStarterGui(game: DataModel): void {
+  const gui = createInstance("ScreenGui", game.GetService("StarterGui")) as ScreenGui;
+  gui.Name = "WelcomeGui";
+
+  const panel = createInstance("Frame", gui) as Frame;
+  panel.Name = "Panel";
+  Object.assign(panel, {
+    AnchorPoint: new Vector2(1, 0),
+    Position: UDim2.new(1, -16, 0, 16),
+    Size: UDim2.fromOffset(220, 96),
+    BackgroundColor3: Color3.fromRGB(18, 24, 34),
+    BackgroundTransparency: 0.25,
+    BorderSizePixel: 0,
+  });
+
+  const label = createInstance("TextLabel", panel) as TextLabel;
+  label.Name = "Count";
+  Object.assign(label, {
+    Position: UDim2.fromOffset(12, 8),
+    Size: UDim2.new(1, -24, 0, 32),
+    BackgroundTransparency: 1,
+    Text: "Clicks: 0",
+    TextColor3: Color3.fromRGB(235, 240, 248),
+    TextSize: 18,
+    TextXAlignment: "Left",
+  });
+
+  const button = createInstance("TextButton", panel) as TextButton;
+  button.Name = "ClickMe";
+  Object.assign(button, {
+    Position: UDim2.new(0, 12, 1, -48),
+    Size: UDim2.new(1, -24, 0, 36),
+    BackgroundColor3: Color3.fromRGB(111, 180, 255),
+    BorderSizePixel: 0,
+    Text: "Click me",
+    TextColor3: Color3.fromRGB(5, 18, 31),
+    TextSize: 16,
+  });
+
+  const script = createInstance("LocalScript", gui);
+  script.Name = "Counter";
+  (script as unknown as { Source: string }).Source = GUI_SCRIPT;
+}
+
+const GUI_SCRIPT = `-- Runs on each player's own client, inside their copy of WelcomeGui.
+local panel = script.Parent.Panel
+local clicks = 0
+
+panel.ClickMe.MouseButton1Click:Connect(function()
+	clicks += 1
+	panel.Count.Text = "Clicks: " .. clicks
+end)
+`;
 
 const LOBBY_SCRIPT = `--!strict
 -- The lobby.

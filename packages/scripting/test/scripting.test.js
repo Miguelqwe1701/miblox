@@ -419,3 +419,54 @@ test("accessory and asset enums are available to scripts", () => {
   );
   assert.deepEqual(ctx.prints, ["Hair\tShirt\tTorso"]);
 });
+
+test("a script can build a GUI with UDim2 values", () => {
+  const ctx = makeEnv();
+  runScript(
+    ctx,
+    `
+      local gui = Instance.new("ScreenGui")
+      gui.Name = "Hud"
+      gui.Parent = game:GetService("StarterGui")
+
+      local label = Instance.new("TextLabel")
+      label.Name = "Coins"
+      label.Size = UDim2.new(0, 200, 0, 50)
+      label.Position = UDim2.fromScale(0.5, 0) + UDim2.fromOffset(0, 10)
+      label.AnchorPoint = Vector2.new(0.5, 0)
+      label.TextXAlignment = Enum.TextXAlignment.Left
+      label.Text = "Coins: 0"
+      label.Parent = gui
+
+      print(label.Position.X.Scale, label.Position.Y.Offset, label.Size.Width.Offset)
+      print(label.Size == UDim2.new(UDim.new(0, 200), UDim.new(0, 50)))
+      print(label:IsA("GuiObject"), label.TextXAlignment)
+    `,
+  );
+  assert.deepEqual(ctx.errors, []);
+  assert.deepEqual(ctx.prints, ["0.5\t10\t200", "true", "true\tLeft"]);
+  const label = ctx.game.GetService("StarterGui").FindFirstChild("Hud").FindFirstChild("Coins");
+  assert.deepEqual(label.Position.toArray(), [0.5, 0, 0, 10]);
+});
+
+test("destroying a script stops its loop", () => {
+  const ctx = makeEnv();
+  const counter = createInstance("IntValue", ctx.game.Workspace);
+  counter.Name = "Ticks";
+  const script = createInstance("Script", ctx.game.GetService("ServerScriptService"));
+  script.Source = `
+    while true do
+      workspace.Ticks.Value += 1
+      task.wait()
+    end
+  `;
+  ctx.env.runScript(script);
+  ctx.env.step(1 / 60);
+  ctx.env.step(1 / 60);
+  const before = counter.Value;
+  assert.ok(before > 0, "the loop should have started");
+  script.Destroy();
+  ctx.env.step(1 / 60);
+  ctx.env.step(1 / 60);
+  assert.equal(counter.Value, before);
+});

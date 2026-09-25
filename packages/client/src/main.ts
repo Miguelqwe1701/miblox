@@ -15,6 +15,7 @@ import { Controls, detectPlatform } from "./controls.js";
 import { CameraRig } from "./camera-rig.js";
 import { ClientSimulation } from "./client-sim.js";
 import { VRSupport } from "./vr.js";
+import { GuiView } from "./gui-view.js";
 import { Hud, type AccountSummary, type GameSummary } from "./hud.js";
 import { LobbyKiosks } from "./lobby.js";
 import { HOTBAR } from "./hotbar.js";
@@ -37,6 +38,9 @@ class MibloxClient {
   private camera: CameraRig | null = null;
   private vr: VRSupport | null = null;
   private clientScripts: ScriptEnvironment | null = null;
+  private guiView: GuiView | null = null;
+  /** LocalScripts under PlayerGui already started, so each runs once. */
+  private guiScriptsRun = new WeakSet<LocalScript>();
 
   private account: AccountSummary | null = null;
   private pendingChunks = new Set<string>();
@@ -98,7 +102,10 @@ class MibloxClient {
       }
     });
     this.renderer.domElement.addEventListener("click", () => {
-      if (!this.hud.isPaused && this.connection) this.controls.requestPointerLock();
+      // A Modal button on screen keeps the mouse free so it can be clicked.
+      if (!this.hud.isPaused && this.connection && !this.guiView?.wantsMouse) {
+        this.controls.requestPointerLock();
+      }
     });
     this.renderer.domElement.addEventListener("wheel", (event) => {
       // Shift-scroll cycles the hotbar; plain scroll zooms the camera.
@@ -121,6 +128,13 @@ class MibloxClient {
 
     if (event.key === "Enter" && this.connection) {
       this.hud.focusChat();
+      event.preventDefault();
+      return;
+    }
+    // Alt frees the mouse so on-screen buttons can be clicked; clicking the
+    // world captures it again.
+    if ((event.code === "AltLeft" || event.code === "AltRight") && document.pointerLockElement) {
+      document.exitPointerLock();
       event.preventDefault();
       return;
     }
@@ -343,6 +357,7 @@ class MibloxClient {
     this.hud.enterGame(detectPlatform(), { building: this.currentGameId !== "lobby" });
     this.hud.addSystemChat(`Welcome to ${connection.placeName}. Press Esc for the menu.`);
     this.startClientScripts();
+    this.guiView = new GuiView(this.container, this.hud.root);
   }
 
   /**
@@ -402,6 +417,24 @@ class MibloxClient {
   }
 
   /**
+   * Starts LocalScripts that have arrived in the local PlayerGui.
+   *
+   * The server copies StarterGui in on every spawn, so this is checked each
+   * frame rather than once. Checking between packets, rather than as each
+   * instance is added, means a script's Source has always landed first.
+   */
+  private runGuiScripts(): void {
+    const playerGui = this.connection?.localPlayer?.FindFirstChild("PlayerGui");
+    if (!playerGui || !this.clientScripts) return;
+    for (const desc of playerGui.GetDescendants()) {
+      if (!(desc instanceof LocalScript) || this.guiScriptsRun.has(desc)) continue;
+      if (!desc.Enabled || !desc.Source) continue;
+      this.guiScriptsRun.add(desc);
+      this.clientScripts.runScript(desc);
+    }
+  }
+
+  /**
    * Leaves the current world.
    *
    * `toMenu` is false when switching worlds: reloading the catalogue would
@@ -432,6 +465,9 @@ class MibloxClient {
     }
     this.clientScripts?.vm.scheduler.clear();
     this.clientScripts = null;
+    this.guiView?.dispose();
+    this.guiView = null;
+    this.guiScriptsRun = new WeakSet();
     this.simulation = null;
     if (toMenu) void this.loadGames();
   }
@@ -455,6 +491,9 @@ class MibloxClient {
     if (!this.connection || !this.camera || !this.simulation || !this.worldView) {
       return;
     }
+    this.runGuiScripts();
+    this.guiView?.update(this.connection.localPlayer);
+    if (this.guiView?.wantsMouse && document.pointerLockElement) document.exitPointerLock();
     // While paused the world keeps ticking, but input does not reach the player.
     if (this.hud.isPaused) {
       this.worldView.update(dt);

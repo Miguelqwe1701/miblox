@@ -5,6 +5,7 @@ export * from "./enums.js";
 export * from "./noise.js";
 export * from "./terrain-data.js";
 export * from "./classes.js";
+export * from "./gui.js";
 export * from "./datamodel.js";
 export * from "./serialize.js";
 export * from "./physics.js";

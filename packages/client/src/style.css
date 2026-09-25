@@ -475,3 +475,26 @@ button.ghost:hover { border-color: var(--accent); background: #ffffff1a; }
   font-size: 0.9rem;
   white-space: nowrap;
 }
+
+/* GUIs a place builds with ScreenGui. Below the HUD, so menus stay on top. */
+.game-gui { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+.game-gui .gui-screen { position: absolute; inset: 0; }
+.game-gui .gui-object { position: absolute; box-sizing: border-box; }
+.game-gui .gui-text {
+  display: flex;
+  overflow: hidden;
+  font-family: system-ui, sans-serif;
+  line-height: 1.15;
+}
+.game-gui .gui-image > img { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.game-gui .gui-button {
+  pointer-events: auto;
+  cursor: pointer;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  font: inherit;
+  font-family: system-ui, sans-serif;
+}
+.game-gui .gui-button.auto-color:hover { filter: brightness(0.9); }
+.game-gui .gui-button.auto-color:active { filter: brightness(0.75); }
